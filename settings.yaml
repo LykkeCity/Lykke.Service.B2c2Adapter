@@ -1,0 +1,24 @@
+B2c2AdapterService:
+    Db:
+        LogsConnString:
+            settings-key: LogsConnString
+            types:
+              - AzureTableStorage
+B2c2AdapterJob:
+  Db:
+    LogsConnString:
+      settings-key: LogsConnString
+      types:
+        - AzureTableStorage
+SlackNotifications:
+    AzureQueue:
+        ConnectionString:
+            settings-key: SlackNotificationsConnString
+            types:
+                - AzureTableStorage
+        QueueName:
+            settings-key: SlackQueueName
+MonitoringServiceClient:
+    MonitoringServiceUrl:
+        settings-key: MonitoringServiceUrl
+
