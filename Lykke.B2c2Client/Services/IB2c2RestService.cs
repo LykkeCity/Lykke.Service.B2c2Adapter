@@ -5,10 +5,7 @@ using Lykke.B2c2Client.Models.Rest;
 
 namespace Lykke.B2c2Client.Services
 {
-    /// Works with rest api
-    /// Must have 'Authorization' token
-    /// Must contain: 'Content-Type: application/json;'
-    public interface IRestService
+    public interface IB2c2RestService
     {
         Task<IReadOnlyDictionary<string, decimal>> GetBalance(CancellationToken ct = default(CancellationToken));
 
@@ -26,11 +23,5 @@ namespace Lykke.B2c2Client.Services
         //OrderResponse GetOrder(string clientOrderId);
 
         //Trade Trade(TradeRequest tradeRequest);
-
-        /// Contract for difference
-        //IReadOnlyCollection<CfdTrade> TradeCfd(CfdTradeRequest cfqTradeRequest);
-
-        /// Returns collection of regular and CFD trades
-        //IReadOnlyCollection<Trade> GetAllTrades(int offset = 0, int limit = 0);
     }
 }

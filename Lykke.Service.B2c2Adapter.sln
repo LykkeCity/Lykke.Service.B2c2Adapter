@@ -27,6 +27,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Service.B2c2Adapter",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.B2c2Client", "Lykke.B2c2Client\Lykke.B2c2Client.csproj", "{A573E4F6-1C72-48E7-81CE-F4E8D1CEFF5E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lykke.Service.B2c2Adapter.ConsoleApp", "Lykke.Service.B2c2Adapter.ConsoleApp\Lykke.Service.B2c2Adapter.ConsoleApp.csproj", "{17D713B6-9A89-4E86-8C19-31A856B1F898}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -63,6 +65,10 @@ Global
 		{A573E4F6-1C72-48E7-81CE-F4E8D1CEFF5E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A573E4F6-1C72-48E7-81CE-F4E8D1CEFF5E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A573E4F6-1C72-48E7-81CE-F4E8D1CEFF5E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{17D713B6-9A89-4E86-8C19-31A856B1F898}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17D713B6-9A89-4E86-8C19-31A856B1F898}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17D713B6-9A89-4E86-8C19-31A856B1F898}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17D713B6-9A89-4E86-8C19-31A856B1F898}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

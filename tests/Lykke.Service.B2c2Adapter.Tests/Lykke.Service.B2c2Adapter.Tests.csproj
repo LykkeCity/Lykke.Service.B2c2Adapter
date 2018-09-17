@@ -12,4 +12,12 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Lykke.B2c2Client\Lykke.B2c2Client.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Lykke.Common">
+      <HintPath>C:\Users\Alexey\.nuget\packages\lykke.common\7.0.4\lib\netstandard2.0\Lykke.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Lykke.Logs">
+      <HintPath>C:\Users\Alexey\.nuget\packages\lykke.logs\5.2.0\lib\netstandard2.0\Lykke.Logs.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 </Project>
