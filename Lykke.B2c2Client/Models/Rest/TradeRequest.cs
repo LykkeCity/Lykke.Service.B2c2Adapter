@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Lykke.B2c2Client.Models.RestApi
+namespace Lykke.B2c2Client.Models.Rest
 {
     public class TradeRequest
     {
