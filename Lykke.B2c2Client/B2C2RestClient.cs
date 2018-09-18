@@ -29,7 +29,7 @@ namespace Lykke.B2c2Client
             _log = logFactory.CreateLog(this);
         }
 
-        public async Task<IReadOnlyDictionary<string, decimal>> GetBalance(CancellationToken ct = default)
+        public async Task<IReadOnlyDictionary<string, decimal>> GetBalance(CancellationToken ct = default(CancellationToken))
         {
             var requestId = Guid.NewGuid();
             _log.Info("balance - request", requestId);
@@ -57,7 +57,7 @@ namespace Lykke.B2c2Client
             }
         }
 
-        public async Task<IReadOnlyCollection<Instrument>> GetInstruments(CancellationToken ct = default)
+        public async Task<IReadOnlyCollection<Instrument>> GetInstruments(CancellationToken ct = default(CancellationToken))
         {
             var requestId = Guid.NewGuid();
             _log.Info("instruments - request", requestId);
@@ -85,7 +85,7 @@ namespace Lykke.B2c2Client
             }
         }
 
-        public async Task<RequestForQuoteResponse> RequestForQuote(RequestForQuoteRequest requestForQuoteRequest, CancellationToken ct = default)
+        public async Task<RequestForQuoteResponse> RequestForQuote(RequestForQuoteRequest requestForQuoteRequest, CancellationToken ct = default(CancellationToken))
         {
             if (requestForQuoteRequest == null) throw new ArgumentNullException(nameof(requestForQuoteRequest));
 
@@ -115,7 +115,7 @@ namespace Lykke.B2c2Client
             }
         }
 
-        public async Task<OrderResponse> PostOrder(OrderRequest orderRequest, CancellationToken ct = default)
+        public async Task<OrderResponse> PostOrder(OrderRequest orderRequest, CancellationToken ct = default(CancellationToken))
         {
             if (orderRequest == null) throw new ArgumentNullException(nameof(orderRequest));
 
