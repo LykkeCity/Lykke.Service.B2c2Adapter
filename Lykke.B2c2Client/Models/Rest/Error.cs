@@ -6,10 +6,10 @@ namespace Lykke.B2c2Client.Models.Rest
     public class Error
     {
         [JsonProperty("code")]
-        public int Code { get; }
+        public int Code { get; set; }
 
         [JsonProperty("message")]
-        public string Message { get; }
+        public string Message { get; set; }
 
         [JsonProperty("from_documentation")]
         public string Documentation => _codesMessages.ContainsKey(Code) ? _codesMessages[Code] : "";

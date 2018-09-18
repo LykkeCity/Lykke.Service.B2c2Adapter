@@ -13,7 +13,7 @@ namespace Lykke.B2c2Client.Models.Rest
         [JsonProperty("instrument")]
         public string Instrument { get; set; }
 
-        [JsonProperty("side")]
+        [JsonProperty("side"), JsonConverter(typeof(StringEnumConverter))]
         public Side Side { get; set; }
 
         [JsonProperty("price")]
@@ -31,5 +31,20 @@ namespace Lykke.B2c2Client.Models.Rest
 
         [JsonProperty("valid_until")]
         public DateTime ValidUntil { get; set; }
+
+        public OrderRequest()
+        {
+        }
+
+        public OrderRequest(RequestForQuoteResponse requestForQuoteResponse)
+        {
+            ClientOrderId = requestForQuoteResponse.ClientRfqId;
+            Instrument = requestForQuoteResponse.Instrument;
+            Side = requestForQuoteResponse.Side;
+            Price = requestForQuoteResponse.Price;
+            Quantity = requestForQuoteResponse.Quantity;
+            OrderType = OrderType.FOK;
+            ValidUntil = requestForQuoteResponse.ValidUntil;
+        }
     }
 }
