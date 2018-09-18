@@ -18,10 +18,8 @@ namespace Lykke.B2c2Client
         private readonly string _authorizationToken;
         private readonly ILog _log;
 
-        private static readonly HttpClient Client = new HttpClient
-        {
-            BaseAddress = new Uri("https://sandboxapi.b2c2.net/")
-        };
+        private static readonly HttpClient Client = new HttpClient {
+            BaseAddress = new Uri("https://sandboxapi.b2c2.net/") };
 
         public B2C2RestClient(string authorizationToken, ILogFactory logFactory)
         {
@@ -41,7 +39,7 @@ namespace Lykke.B2c2Client
                 {
                     var status = response.StatusCode;
                     
-                    var responseStr = await response.Content.ReadAsStringAsync();
+                    var responseStr = await response.Content.ReadAsAsync<string>(ct);
                     _log.Info($"balance - response: {responseStr}", requestId);
 
                     EnsureNoErrorProperty(responseStr, status, requestId);
@@ -69,7 +67,7 @@ namespace Lykke.B2c2Client
                 {
                     var status = response.StatusCode;
 
-                    var responseStr = await response.Content.ReadAsStringAsync();
+                    var responseStr = await response.Content.ReadAsAsync<string>(ct);
                     _log.Info($"instruments - response: {responseStr}", requestId);
 
                     EnsureNoErrorProperty(responseStr, status, requestId);
@@ -99,7 +97,7 @@ namespace Lykke.B2c2Client
                 {
                     var status = response.StatusCode;
 
-                    var responseStr = await response.Content.ReadAsStringAsync();
+                    var responseStr = await response.Content.ReadAsAsync<string>(ct);
                     _log.Info($"request_for_quote - response: {responseStr}", requestId);
 
                     EnsureNoErrorProperty(responseStr, status, requestId);
@@ -129,7 +127,7 @@ namespace Lykke.B2c2Client
                 {
                     var status = response.StatusCode;
 
-                    var responseStr = await response.Content.ReadAsStringAsync();
+                    var responseStr = await response.Content.ReadAsAsync<string>(ct);
                     _log.Info($"order - response: {responseStr}", requestId);
 
                     EnsureNoErrorProperty(responseStr, status, requestId);
