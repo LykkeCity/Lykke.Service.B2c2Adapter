@@ -4,6 +4,8 @@
     <Version>1.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Lykke.Common" Version="7.1.0" />
+    <PackageReference Include="Lykke.Logs" Version="6.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
     <PackageReference Include="Moq" Version="4.10.0" />
     <PackageReference Include="xunit" Version="2.4.0" />
@@ -11,13 +13,5 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Lykke.B2c2Client\Lykke.B2c2Client.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="Lykke.Common">
-      <HintPath>C:\Users\Alexey\.nuget\packages\lykke.common\7.0.4\lib\netstandard2.0\Lykke.Common.dll</HintPath>
-    </Reference>
-    <Reference Include="Lykke.Logs">
-      <HintPath>C:\Users\Alexey\.nuget\packages\lykke.logs\5.2.0\lib\netstandard2.0\Lykke.Logs.dll</HintPath>
-    </Reference>
   </ItemGroup>
 </Project>
