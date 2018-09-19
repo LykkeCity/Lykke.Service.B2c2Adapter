@@ -104,6 +104,10 @@ namespace Lykke.B2c2Client
 
                     var result = JsonConvert.DeserializeObject<RequestForQuoteResponse>(responseStr);
 
+                    if (result.ClientRfqId != requestForQuoteRequest.ClientRfqId)
+                        throw new B2c2RestException($"request.client_rfq_id '{requestForQuoteRequest.ClientRfqId}' != " +
+                                                    $"response.client_rfq_id '{result.ClientRfqId}'", requestId);
+
                     return result;
                 }
             }
@@ -133,6 +137,10 @@ namespace Lykke.B2c2Client
                     EnsureNoErrorProperty(responseStr, status, requestId);
 
                     var result = JsonConvert.DeserializeObject<OrderResponse>(responseStr);
+
+                    if (result.ClientOrderId != orderRequest.ClientOrderId)
+                        throw new B2c2RestException($"request.client_order_id '{orderRequest.ClientOrderId}' != " +
+                                                    $"response.client_order_id '{result.ClientOrderId}'", requestId);
 
                     return result;
                 }

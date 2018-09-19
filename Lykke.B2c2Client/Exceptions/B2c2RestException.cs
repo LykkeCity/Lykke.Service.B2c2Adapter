@@ -21,6 +21,11 @@ namespace Lykke.B2c2Client.Exceptions
             RequestId = requestId;
         }
 
+        public B2c2RestException(string message, Guid requestId) : base(message)
+        {
+            RequestId = requestId;
+        }
+
         public override string Message
         {
             get
