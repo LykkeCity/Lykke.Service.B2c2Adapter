@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Common.Log;
@@ -9,7 +10,6 @@ using Lykke.B2c2Client.Exceptions;
 using Lykke.B2c2Client.Models.Rest;
 using Lykke.Common.Log;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Lykke.B2c2Client
 {
@@ -93,16 +93,16 @@ namespace Lykke.B2c2Client
 
             try
             {
-                using (var response = await _client.PostAsJsonAsync("request_for_quote/", requestForQuoteRequest, ct))
+;               using (var response = await _client.PostAsJsonAsync("request_for_quote/", requestForQuoteRequest, ct))
                 {
                     var status = response.StatusCode;
 
-                    var responseObj = await response.Content.ReadAsAsync<JObject>(ct);
-                    _log.Info($"request_for_quote - response: {responseObj}", requestId);
+                    var responseStr = await response.Content.ReadAsStringAsync();
+                    _log.Info($"request_for_quote - response: {responseStr}", requestId);
 
-                    EnsureNoErrorProperty(responseObj, status, requestId);
+                    EnsureNoErrorProperty(responseStr, status, requestId);
 
-                    var result = responseObj.ToObject<RequestForQuoteResponse>();
+                    var result = JsonConvert.DeserializeObject<RequestForQuoteResponse>(responseStr);
 
                     return result;
                 }
@@ -127,12 +127,12 @@ namespace Lykke.B2c2Client
                 {
                     var status = response.StatusCode;
 
-                    var responseObj = await response.Content.ReadAsAsync<JObject>(ct);
-                    _log.Info($"order - response: {responseObj}", requestId);
+                    var responseStr = await response.Content.ReadAsStringAsync();
+                    _log.Info($"order - response: {responseStr}", requestId);
 
-                    EnsureNoErrorProperty(responseObj, status, requestId);
+                    EnsureNoErrorProperty(responseStr, status, requestId);
 
-                    var result = responseObj.ToObject<OrderResponse>();
+                    var result = JsonConvert.DeserializeObject<OrderResponse>(responseStr);
 
                     return result;
                 }
@@ -157,12 +157,12 @@ namespace Lykke.B2c2Client
                 {
                     var status = response.StatusCode;
 
-                    var responseObj = await response.Content.ReadAsAsync<JObject>(ct);
-                    _log.Info($"trade - response: {responseObj}", requestId);
+                    var responseStr = await response.Content.ReadAsStringAsync();
+                    _log.Info($"trade - response: {responseStr}", requestId);
 
-                    EnsureNoErrorProperty(responseObj, status, requestId);
+                    EnsureNoErrorProperty(responseStr, status, requestId);
 
-                    var result = responseObj.ToObject<Trade>();
+                    var result = JsonConvert.DeserializeObject<Trade>(responseStr);
 
                     return result;
                 }
@@ -183,26 +183,6 @@ namespace Lykke.B2c2Client
                 try
                 {
                     errorResponse = JsonConvert.DeserializeObject<ErrorResponse>(response);
-                    errorResponse.Status = status;
-                }
-                catch (Exception e)
-                {
-                    var message = $"Can't deserialize error response, status: {(int)status} {status.ToString()}, guid: {guid}, response: {response}";
-                    throw new B2c2RestException(message, e, guid);
-                }
-
-                throw new B2c2RestException(errorResponse, guid);
-            }
-        }
-
-        private void EnsureNoErrorProperty(JObject response, HttpStatusCode status, Guid guid)
-        {
-            if (response["errors"] != null)
-            {
-                ErrorResponse errorResponse;
-                try
-                {
-                    errorResponse = response.ToObject<ErrorResponse>();
                     errorResponse.Status = status;
                 }
                 catch (Exception e)
