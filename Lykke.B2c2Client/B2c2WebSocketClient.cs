@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.WebSockets;
 using System.Text;
@@ -20,14 +21,17 @@ namespace Lykke.B2c2Client
         private readonly string _authorizationToken;
         private readonly ILog _log;
         private ClientWebSocket _clientWebSocket;
-        private readonly ConcurrentDictionary<(string, bool), Func<OrderBookResponse, Task>> _subscriptions;
+        private readonly object _sync = new object();
+        private readonly IDictionary<string, Func<PriceMessage, Task>> _subscriptions;
+        private readonly IDictionary<string, IList<Func<PriceMessage, Task>>> _instrumentsHandlers;
         private readonly ConcurrentDictionary<string, string> _tradableInstruments;
 
         public B2c2WebSocketClient(string authorizationToken, ILogFactory logFactory)
         {
             _authorizationToken = authorizationToken;
             _log = logFactory.CreateLog(this);
-            _subscriptions = new ConcurrentDictionary<(string, bool), Func<OrderBookResponse, Task>>();
+            _subscriptions = new Dictionary<string, Func<PriceMessage, Task>>();
+            _instrumentsHandlers = new Dictionary<string, IList<Func<PriceMessage, Task>>>();
             _tradableInstruments = new ConcurrentDictionary<string, string>();
         }
 
@@ -55,7 +59,7 @@ namespace Lykke.B2c2Client
             _log.Info("Connection to WebSocket was sucessfuly closed.");
         }
 
-        public async Task SubscribeToOrderBookUpdatesAsync(SubscribeRequest subscribeRequest, Func<OrderBookResponse, Task> handler,
+        public async Task SubscribeToOrderBookUpdatesAsync(SubscribeRequest subscribeRequest, Func<PriceMessage, Task> handler,
             CancellationToken ct = default(CancellationToken))
         {
             if (subscribeRequest == null) throw new NullReferenceException(nameof(subscribeRequest));
@@ -68,8 +72,11 @@ namespace Lykke.B2c2Client
             var request = StringToArraySegment(JsonConvert.SerializeObject(subscribeRequest));
             await _clientWebSocket.SendAsync(request, WebSocketMessageType.Text, true, ct).ConfigureAwait(false);
 
-            _subscriptions[(subscribeRequest.Tag, false)] = handler;
-
+            lock (_sync)
+            {
+                _subscriptions[subscribeRequest.Tag] = handler;
+            }
+            
             // Listen for updates in another method
         }
 
@@ -90,12 +97,12 @@ namespace Lykke.B2c2Client
                     var messageBytes = stream.ToArray();
                     var jsonMessage = Encoding.UTF8.GetString(messageBytes, 0, messageBytes.Length);
 
-                    await HandleWebSocketMessageAsync(jsonMessage);
+                    HandleWebSocketMessageAsync(jsonMessage);
                 }
             }
         }
 
-        private async Task HandleWebSocketMessageAsync(string jsonMessage)
+        private void HandleWebSocketMessageAsync(string jsonMessage)
         {
             var jToken = JToken.Parse(jsonMessage);
             var type = jToken["event"]?.Value<string>();
@@ -120,7 +127,10 @@ namespace Lykke.B2c2Client
         private void HandleTradableInstrumentMessage(JToken jToken)
         {
             if (jToken["success"]?.Value<bool>() == false)
-                throw new B2c2WebSocketException($"{nameof(ConnectResponse)}.{nameof(ConnectResponse.Success)} == false.");
+            {
+                _log.Warning($"{nameof(ConnectResponse)}.{nameof(ConnectResponse.Success)} == false. {jToken}");
+                return;
+            }
 
             var result = jToken.ToObject<ConnectResponse>();
             foreach (var instrument in result.Instruments)
@@ -130,12 +140,51 @@ namespace Lykke.B2c2Client
         private void HandleSubscribeMessage(JToken jToken)
         {
             if (jToken["success"]?.Value<bool>() == false)
-                throw new B2c2WebSocketException($"{nameof(SubscribeResponse)}.{nameof(SubscribeResponse.Success)} == false.");
+            {
+                lock (_sync)
+                {
+                    _subscriptions.Remove(jToken["tag"].Value<string>());
+                }
+
+                _log.Warning($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}");
+                return;
+            }
+
+            var result = jToken.ToObject<SubscribeMessage>();
+            var key = result.Tag;
+            lock (_sync)
+            {
+                if (_subscriptions.ContainsKey(key))
+                {
+                    var handler = _subscriptions[key];
+                    _subscriptions.Remove(key);
+
+                    var handlers = _instrumentsHandlers[result.Instrument];
+                    if (handlers == null)
+                        handlers = new List<Func<PriceMessage, Task>> { handler };
+                    else
+                        handlers.Add(handler);
+
+                    _instrumentsHandlers[result.Instrument] = handlers;
+                }
+            }
         }
 
         private void HandlePriceMessage(JToken jToken)
         {
+            if (jToken["success"]?.Value<bool>() == false)
+            {
+                _log.Warning($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}");
+                return;
+            }
 
+            var result = jToken.ToObject<PriceMessage>();
+            lock (_sync)
+            {
+                var handlers = _instrumentsHandlers[result.Instrument];
+                foreach (var handler in handlers)
+                    handler(result);
+            }
         }
 
         private ArraySegment<byte> StringToArraySegment(string message)

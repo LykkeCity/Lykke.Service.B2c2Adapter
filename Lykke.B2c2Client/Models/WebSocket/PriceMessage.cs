@@ -4,7 +4,7 @@ using Newtonsoft.Json.Converters;
 
 namespace Lykke.B2c2Client.Models.WebSocket
 {
-    public class OrderBookResponse
+    public class PriceMessage
     {
         [JsonProperty("levels")]
         public Levels Levels { get; set; }

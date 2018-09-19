@@ -2,7 +2,7 @@
 
 namespace Lykke.B2c2Client.Models.WebSocket
 {
-    public class SubscribeResponse
+    public class SubscribeMessage
     {
         [JsonProperty("event")]
         public string Event { get; set; }
