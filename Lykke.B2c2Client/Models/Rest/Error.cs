@@ -12,9 +12,9 @@ namespace Lykke.B2c2Client.Models.Rest
         public string Message { get; set; }
 
         [JsonProperty("from_documentation")]
-        public string Documentation => _codesMessages.ContainsKey(Code) ? _codesMessages[Code] : "";
+        public string Documentation => CodesMessages.ContainsKey(Code) ? CodesMessages[Code] : "";
 
-        private static IDictionary<int, string> _codesMessages = new Dictionary<int, string>
+        private static readonly IDictionary<int, string> CodesMessages = new Dictionary<int, string>
         {
             { 1000, "Generic – Unknown error." },
             { 1001, "Instrument not allowed – Instrument does not exist or you are not authorized to trade it." },
