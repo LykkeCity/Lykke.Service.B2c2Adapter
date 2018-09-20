@@ -16,11 +16,15 @@ namespace Lykke.B2c2Client
     {
         private readonly string _authorizationToken;
         private readonly ILog _log;
-
         private readonly HttpClient _client;
 
         public B2c2RestClient(string url, string authorizationToken, ILogFactory logFactory)
         {
+            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                throw new ArgumentOutOfRangeException(nameof(url));
+            if (string.IsNullOrWhiteSpace(authorizationToken)) throw new ArgumentOutOfRangeException(nameof(authorizationToken));
+            if (logFactory == null) throw new NullReferenceException(nameof(logFactory));
+
             url = url[url.Length - 1] == '/' ? url.Substring(0, url.Length - 1) : url;
             _client = new HttpClient { BaseAddress = new Uri(url) };
             _authorizationToken = authorizationToken;

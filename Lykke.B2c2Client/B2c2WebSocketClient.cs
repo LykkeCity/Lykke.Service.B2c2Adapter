@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.WebSockets;
@@ -16,50 +17,111 @@ namespace Lykke.B2c2Client
 {
     public class B2c2WebSocketClient : IB2c2WebSocketClient, IDisposable
     {
+        private readonly TimeSpan _timeOut = new TimeSpan(0, 0, 0, 30);
         private readonly string _baseUri;
         private readonly string _authorizationToken;
         private readonly ILog _log;
         private ClientWebSocket _clientWebSocket;
         private readonly object _sync = new object();
-        private readonly IDictionary<string, Func<PriceMessage, Task>> _subscriptions;
-        private readonly IDictionary<string, Func<PriceMessage, Task>> _instrumentsHandlers;
+        private readonly ConcurrentDictionary<string, Subscription> _awaitingSubscription;
+        private readonly ConcurrentDictionary<string, Func<PriceMessage, Task>> _instrumentsHandlers;
+        private readonly ConcurrentDictionary<string, Subscription> _awaitingUnsubscription;
         private readonly IList<string> _tradableInstruments;
         private readonly CancellationTokenSource _tokenSource;
 
         public B2c2WebSocketClient(string url, string authorizationToken, ILogFactory logFactory)
         {
+            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out _))
+                throw new ArgumentOutOfRangeException(nameof(url));
+            if (string.IsNullOrWhiteSpace(authorizationToken)) throw new ArgumentOutOfRangeException(nameof(authorizationToken));
+            if (logFactory == null) throw new NullReferenceException(nameof(logFactory));
+
             _baseUri = url[url.Length-1] == '/' ? url.Substring(0, url.Length - 1) : url;
             _authorizationToken = authorizationToken;
             _log = logFactory.CreateLog(this);
             _clientWebSocket = new ClientWebSocket();
-            _subscriptions = new Dictionary<string, Func<PriceMessage, Task>>();
-            _instrumentsHandlers = new Dictionary<string, Func<PriceMessage, Task>>();
+            _awaitingSubscription = new ConcurrentDictionary<string, Subscription>();
+            _instrumentsHandlers = new ConcurrentDictionary<string, Func<PriceMessage, Task>>();
             _tradableInstruments = new List<string>();
             _tokenSource = new CancellationTokenSource();
         }
 
-        public async Task ConnectAsync(CancellationToken ct = default(CancellationToken))
+        public async Task SubscribeAsync(string instrument, int[] levels, Func<PriceMessage, Task> handler,
+            CancellationToken ct = default(CancellationToken))
         {
-            _log.Info("Attempt to establish a WebSocket connection.");
+            if (string.IsNullOrWhiteSpace(instrument)) throw new ArgumentOutOfRangeException(nameof(instrument));
+            if (levels.Length < 1 || levels.Length > 2) throw new ArgumentOutOfRangeException($"{nameof(levels)}. Minimum levels - 1, maximum - 2.");
+            if (handler == null) throw new NullReferenceException(nameof(handler));
 
-            _clientWebSocket.Options.SetRequestHeader("Authorization", $"Token {_authorizationToken}");
-            await _clientWebSocket.ConnectAsync(new Uri($"{_baseUri}/quotes"), ct).ConfigureAwait(false);
+            var tag = Guid.NewGuid().ToString();
+            lock (_sync)
+            {
+                if (_awaitingSubscription.ContainsKey(instrument)
+                    || _instrumentsHandlers.ContainsKey(instrument))
+                    throw new B2c2WebSocketException($"Subscription to {instrument} is already exists.");
+            }
+
+            if (_clientWebSocket.State == WebSocketState.None)
+                Connect(ct);
+
+            _log.Info($"Attempt to subscribe to order book updates, tag: {instrument}.");
+
+            var subscribeRequest = new SubscribeRequest { Instrument = instrument, Levels = levels, Tag = tag };
+            var request = StringToArraySegment(JsonConvert.SerializeObject(subscribeRequest));
+            await _clientWebSocket.SendAsync(request, WebSocketMessageType.Text, true, ct).ConfigureAwait(false);
+
+            var taskCompletionSource = new TaskCompletionSource<int>();
+            lock (_sync)
+            {
+                _awaitingSubscription[instrument] = new Subscription(tag, taskCompletionSource, handler);
+            }
+
+            await Task.Delay(_timeOut, ct);
+            if (!ct.IsCancellationRequested)
+            {
+                lock (_sync)
+                {
+                    _awaitingSubscription.TryRemove(instrument, out _);
+                }
+                taskCompletionSource.TrySetException(new B2c2WebSocketException("Timeout."));
+            }
+        }
+
+        public async Task UnsubscribeAsync(string instrument, CancellationToken ct = default(CancellationToken))
+        {
+            if (string.IsNullOrWhiteSpace(instrument)) throw new NullReferenceException(nameof(instrument));
+
+            var tag = Guid.NewGuid().ToString();
+            lock (_sync)
+            {
+                if (!_instrumentsHandlers.ContainsKey(instrument))
+                    throw new B2c2WebSocketException($"Subscription to {instrument} does not exist.");
+            }
 
             if (_clientWebSocket.State != WebSocketState.Open)
-                throw new Exception($"Could not establish WebSocket connection to {_baseUri}.");
+                throw new B2c2WebSocketException($"WebSocketState is not 'Open' - {_clientWebSocket.State}.");
 
-            // Listen for messages in separate thread
-            #pragma warning disable 4014
-            Task.Run(async () =>
+            _log.Info($"Attempt to unsubscribe from order book updates, tag: {instrument}.");
+
+            var unsubscribeRequest = new UnsubscribeRequest { Instrument = instrument, Tag = tag };
+            var request = StringToArraySegment(JsonConvert.SerializeObject(unsubscribeRequest));
+            await _clientWebSocket.SendAsync(request, WebSocketMessageType.Text, true, ct).ConfigureAwait(false);
+
+            var taskCompletionSource = new TaskCompletionSource<int>();
+            lock (_sync)
+            {
+                _awaitingUnsubscription[instrument] = new Subscription(tag, taskCompletionSource);
+            }
+
+            await Task.Delay(_timeOut, ct);
+            if (!ct.IsCancellationRequested)
+            {
+                lock (_sync)
                 {
-                    await HandleMessagesCycleAsync(_tokenSource.Token);
-                }, _tokenSource.Token)
-                .ContinueWith(t =>
-                {
-                    if (t.IsFaulted)
-                        _log.Error(t.Exception, "Something went wrong in subscription thread.");
-                }, default(CancellationToken));
-            #pragma warning restore 4014
+                    _awaitingUnsubscription.TryRemove(instrument, out _);
+                }
+                taskCompletionSource.TrySetException(new B2c2WebSocketException("Timeout."));
+            }
         }
 
         public async Task DisconnectAsync(CancellationToken ct = default(CancellationToken))
@@ -71,71 +133,33 @@ namespace Lykke.B2c2Client
                 await _clientWebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Normal closure.", ct);
             }
 
-            _subscriptions.Clear();
+            _awaitingSubscription.Clear();
             _instrumentsHandlers.Clear();
             _tradableInstruments.Clear();
 
             _log.Info("Connection to WebSocket was sucessfuly closed.");
         }
 
-        public async Task SubscribeAsync(string instrument, int[] levels, Func<PriceMessage, Task> handler,
-            CancellationToken ct = default(CancellationToken))
+        private void Connect(CancellationToken ct = default(CancellationToken))
         {
-            if (string.IsNullOrWhiteSpace(instrument)) throw new ArgumentOutOfRangeException(nameof(instrument));
-            //if (levels.Length < 1 || levels.Length > 2) throw new ArgumentOutOfRangeException($"{nameof(levels)}. Minimum levels - 1, maximum - 2.");
-            if (handler == null) throw new NullReferenceException(nameof(handler));
+            _log.Info("Attempt to establish a WebSocket connection.");
 
-            var subscribeRequest = new SubscribeRequest
-            {
-                Instrument = instrument,
-                Levels = levels,
-                Tag = Guid.NewGuid().ToString()
-            };
-
-            lock (_sync)
-            {
-                if (_subscriptions.ContainsKey(instrument)
-                    || _instrumentsHandlers.ContainsKey(instrument))
-                    throw new B2c2WebSocketException($"Subscription to {instrument} is already exists.");
-            }
-
-            if (_clientWebSocket.State == WebSocketState.None)
-                await ConnectAsync(ct);
-
-            _log.Info($"Attempt to subscribe to order book updates, instrument: {subscribeRequest.Instrument}.");
-
-            var request = StringToArraySegment(JsonConvert.SerializeObject(subscribeRequest));
-            await _clientWebSocket.SendAsync(request, WebSocketMessageType.Text, true, ct).ConfigureAwait(false);
-
-            lock (_sync)
-            {
-                _subscriptions[subscribeRequest.Instrument] = handler;
-            }
-        }
-
-        public async Task UnsubscribeAsync(string instrument, CancellationToken ct = default(CancellationToken))
-        {
-            if (string.IsNullOrWhiteSpace(instrument)) throw new NullReferenceException(nameof(instrument));
-
-            lock (_sync)
-            {
-                if (!_instrumentsHandlers.ContainsKey(instrument))
-                    throw new B2c2WebSocketException($"Subscription to {instrument} is not existed.");
-            }
+            _clientWebSocket.Options.SetRequestHeader("Authorization", $"Token {_authorizationToken}");
+            _clientWebSocket.ConnectAsync(new Uri($"{_baseUri}/quotes"), ct).ConfigureAwait(false).GetAwaiter().GetResult();
 
             if (_clientWebSocket.State != WebSocketState.Open)
-                throw new B2c2WebSocketException($"WebSocketState is not 'Open' - {_clientWebSocket.State}.");
+                throw new Exception($"Could not establish WebSocket connection to {_baseUri}.");
 
-            _log.Info($"Attempt to unsubscribe from order book updates, instrument: {instrument}.");
-
-            var unsubscribeRequest = new UnsubscribeRequest
-            {
-                Instrument = instrument,
-                Tag = Guid.NewGuid().ToString()
-            };
-
-            var request = StringToArraySegment(JsonConvert.SerializeObject(unsubscribeRequest));
-            await _clientWebSocket.SendAsync(request, WebSocketMessageType.Text, true, ct).ConfigureAwait(false);
+            // Listen for messages in separate io thread
+            Task.Run(async () =>
+                {
+                    await HandleMessagesCycleAsync(_tokenSource.Token);
+                }, _tokenSource.Token)
+                .ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                        _log.Error(t.Exception, "Something went wrong in subscription thread.");
+                }, default(CancellationToken));
         }
 
         private async Task HandleMessagesCycleAsync(CancellationToken ct)
@@ -186,12 +210,6 @@ namespace Lykke.B2c2Client
         {
             if (jToken["success"]?.Value<bool>() == false)
             {
-                lock (_sync)
-                {
-                    var key = jToken["instrument"].Value<string>();
-                    if (_subscriptions.ContainsKey(key))
-                        _subscriptions.Remove(key);
-                }
                 _log.Error($"{nameof(ConnectResponse)}.{nameof(ConnectResponse.Success)} == false. {jToken}");
                 return;
             }
@@ -203,35 +221,34 @@ namespace Lykke.B2c2Client
 
         private void HandleSubscribeMessage(JToken jToken)
         {
+            var instrument = jToken["instrument"].Value<string>();
+            var tag = jToken["tag"].Value<string>();
             if (jToken["success"]?.Value<bool>() == false)
             {
+                var message = $"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}";
                 lock (_sync)
                 {
-                    _subscriptions.Remove(jToken["instrument"].Value<string>());
+                    _awaitingSubscription.Remove(instrument, out var value);
+                    if (tag != value.Tag)
+                        value.TaskCompletionSource.TrySetException(new InvalidOperationException($"Tags are not the same: {tag}, {value.Tag}."));
+                    value.TaskCompletionSource.TrySetException(new B2c2WebSocketException(message));
                 }
 
-                _log.Error($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}");
                 return;
             }
-
+            
             var result = jToken.ToObject<SubscribeMessage>();
-            var instrument = result.Instrument;
             lock (_sync)
             {
-                if (_subscriptions.ContainsKey(instrument))
-                {
-                    var handler = _subscriptions[instrument];
-                    _subscriptions.Remove(instrument);
-
-                    if (_instrumentsHandlers.ContainsKey(result.Instrument))
-                        _log.Error($"Attempt to second subscription to {result.Instrument}.");
-
-                    _instrumentsHandlers[result.Instrument] = handler;
-                }
-                else
-                {
+                if (!_awaitingSubscription.ContainsKey(instrument))
                     _log.Error($"Subscriptions doesn't have element with {result.Instrument}.");
-                }
+
+                _awaitingSubscription.Remove(instrument, out var subscription);
+                
+                if (_instrumentsHandlers.ContainsKey(result.Instrument))
+                    subscription.TaskCompletionSource.TrySetException(new B2c2WebSocketException($"Attempt to second subscription to {result.Instrument}."));
+
+                _instrumentsHandlers[instrument] = subscription.Function;                
             }
         }
 
@@ -253,24 +270,39 @@ namespace Lykke.B2c2Client
 
         private void HandleUnsubscribeMessage(JToken jToken)
         {
+            var instrument = jToken["instrument"].Value<string>();
+            var tag = jToken["tag"].Value<string>();
             if (jToken["success"]?.Value<bool>() == false)
             {
-                _log.Error($"{nameof(UnsubscribeMessage)}.{nameof(UnsubscribeMessage.Success)} == false. {jToken}");
+                var message = $"{nameof(UnsubscribeMessage)}.{nameof(UnsubscribeMessage.Success)} == false. {jToken}";
+                lock (_sync)
+                {
+                    _instrumentsHandlers.Remove(instrument, out _);
+                    _awaitingUnsubscription.Remove(instrument, out var value);
+                    if (tag != value.Tag)
+                        value.TaskCompletionSource.TrySetException(new InvalidOperationException($"Tags are not the same: {tag}, {value.Tag}."));
+                    value.TaskCompletionSource.TrySetException(new B2c2WebSocketException(message));
+                }
+
                 return;
             }
 
             var result = jToken.ToObject<UnsubscribeMessage>();
-            var instrument = result.Instrument;
             lock (_sync)
             {
-                if (!_subscriptions.ContainsKey(instrument))
-                    _log.Error($"Can't unsubscribe from '{instrument}', handler is not existed. {jToken}");
+                if (!_awaitingUnsubscription.ContainsKey(instrument))
+                    _log.Error($"Can't unsubscribe from '{instrument}', subscription does not exist. {jToken}");
 
-                _subscriptions.Remove(instrument);
+                _awaitingUnsubscription.Remove(instrument, out var subscription);
+
+                if (_instrumentsHandlers.ContainsKey(result.Instrument))
+                    subscription.TaskCompletionSource.TrySetException(new B2c2WebSocketException($"Attempt to second subscription to {result.Instrument}."));
+
+                _instrumentsHandlers.Remove(instrument, out _);
             }
         }
 
-        private ArraySegment<byte> StringToArraySegment(string message)
+        private static ArraySegment<byte> StringToArraySegment(string message)
         {
             var messageBytes = Encoding.UTF8.GetBytes(message);
             var messageArraySegment = new ArraySegment<byte>(messageBytes);
@@ -311,5 +343,27 @@ namespace Lykke.B2c2Client
         }
 
         #endregion
+
+        private class Subscription
+        {
+            public string Tag { get; }
+
+            public TaskCompletionSource<int> TaskCompletionSource { get; }
+
+            public Func<PriceMessage, Task> Function { get; }
+
+            public Subscription(string tag, TaskCompletionSource<int> taskCompletionSource, Func<PriceMessage, Task> function)
+            {
+                Tag = tag;
+                TaskCompletionSource = taskCompletionSource;
+                Function = function;
+            }
+
+            public Subscription(string tag, TaskCompletionSource<int> taskCompletionSource)
+            {
+                Tag = tag;
+                TaskCompletionSource = taskCompletionSource;
+            }
+        }
     }
 }
