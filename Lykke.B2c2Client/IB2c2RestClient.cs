@@ -7,18 +7,18 @@ namespace Lykke.B2c2Client
 {
     public interface IB2c2RestClient
     {
-        Task<IReadOnlyDictionary<string, decimal>> GetBalanceAsync(CancellationToken ct = default(CancellationToken));
+        Task<IReadOnlyDictionary<string, decimal>> BalanceAsync(CancellationToken ct = default(CancellationToken));
 
         //Task<MarginRequirements> GetMarginRequirements();
 
         //Task<IReadOnlyCollection<OpenPosition>> GetOpenPositions();
 
-        Task<IReadOnlyCollection<Instrument>> GetInstrumentsAsync(CancellationToken ct = default(CancellationToken));
+        Task<IReadOnlyCollection<Instrument>> InstrumentsAsync(CancellationToken ct = default(CancellationToken));
 
         Task<RequestForQuoteResponse> RequestForQuoteAsync(RequestForQuoteRequest requestForQuoteRequest,
             CancellationToken ct = default(CancellationToken));
 
-        Task<OrderResponse> PostOrderAsync(OrderRequest orderRequest, CancellationToken ct = default(CancellationToken));
+        Task<OrderResponse> OrderAsync(OrderRequest orderRequest, CancellationToken ct = default(CancellationToken));
 
         //OrderResponse GetOrder(string clientOrderId);
 
