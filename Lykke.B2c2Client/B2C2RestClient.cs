@@ -14,7 +14,6 @@ namespace Lykke.B2c2Client
 {
     public class B2c2RestClient : IB2c2RestClient
     {
-        private readonly string _authorizationToken;
         private readonly ILog _log;
         private readonly HttpClient _client;
 
@@ -27,8 +26,7 @@ namespace Lykke.B2c2Client
 
             url = url[url.Length - 1] == '/' ? url.Substring(0, url.Length - 1) : url;
             _client = new HttpClient { BaseAddress = new Uri(url) };
-            _authorizationToken = authorizationToken;
-            _client.DefaultRequestHeaders.Add("Authorization", $"Token {_authorizationToken}");
+            _client.DefaultRequestHeaders.Add("Authorization", $"Token {authorizationToken}");
             _log = logFactory.CreateLog(this);
         }
 
@@ -39,7 +37,7 @@ namespace Lykke.B2c2Client
 
             try
             {
-                using (var response = await _client.GetAsync("/balance", ct))
+                using (var response = await _client.GetAsync("balance/", ct))
                 {
                     var status = response.StatusCode;
                     
@@ -67,7 +65,7 @@ namespace Lykke.B2c2Client
 
             try
             {
-                using (var response = await _client.GetAsync("/instruments", ct))
+                using (var response = await _client.GetAsync("instruments/", ct))
                 {
                     var status = response.StatusCode;
 
@@ -97,7 +95,7 @@ namespace Lykke.B2c2Client
 
             try
             {
-;               using (var response = await _client.PostAsJsonAsync("/request_for_quote", requestForQuoteRequest, ct))
+;               using (var response = await _client.PostAsJsonAsync("request_for_quote/", requestForQuoteRequest, ct))
                 {
                     var status = response.StatusCode;
 
@@ -131,7 +129,7 @@ namespace Lykke.B2c2Client
 
             try
             {
-                using (var response = await _client.PostAsJsonAsync("/order", orderRequest, ct))
+                using (var response = await _client.PostAsJsonAsync("order/", orderRequest, ct))
                 {
                     var status = response.StatusCode;
 
@@ -165,7 +163,7 @@ namespace Lykke.B2c2Client
 
             try
             {
-                using (var response = await _client.PostAsJsonAsync("/trade", tradeRequest, ct))
+                using (var response = await _client.PostAsJsonAsync("trade/", tradeRequest, ct))
                 {
                     var status = response.StatusCode;
 
