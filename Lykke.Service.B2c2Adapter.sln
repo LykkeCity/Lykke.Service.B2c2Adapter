@@ -11,16 +11,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution items", "Solution 
 		settings.yaml = settings.yaml
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Service.B2c2Adapter.Domain", "src\Lykke.Service.B2c2Adapter.Domain\Lykke.Service.B2c2Adapter.Domain.csproj", "{F5B2F6B8-A8CC-4612-8F1D-C063EB8C8955}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Service.B2c2Adapter.DomainServices", "src\Lykke.Service.B2c2Adapter.DomainServices\Lykke.Service.B2c2Adapter.DomainServices.csproj", "{2D5F52EC-2A27-4045-81ED-72355E2A6325}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Service.B2c2Adapter.AzureRepositories", "src\Lykke.Service.B2c2Adapter.AzureRepositories\Lykke.Service.B2c2Adapter.AzureRepositories.csproj", "{4BE49E02-AAAD-460B-8D00-57F412A3D181}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Service.B2c2Adapter.Contract", "contract\Lykke.Service.B2c2Adapter.Contract\Lykke.Service.B2c2Adapter.Contract.csproj", "{931B95E3-AF9F-4A4C-9C6A-5959C2FBCAC9}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Service.B2c2Adapter.Client", "client\Lykke.Service.B2c2Adapter.Client\Lykke.Service.B2c2Adapter.Client.csproj", "{3C300C31-97D3-41E8-A627-C53491BDA28B}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Service.B2c2Adapter.Tests", "tests\Lykke.Service.B2c2Adapter.Tests\Lykke.Service.B2c2Adapter.Tests.csproj", "{A61FFDEE-5725-4650-A788-6E55EE5EFD5B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Lykke.Service.B2c2Adapter", "src\Lykke.Service.B2c2Adapter\Lykke.Service.B2c2Adapter.csproj", "{E414FDB9-FEEA-4CD0-9BBA-D1541601DF29}"
@@ -33,25 +23,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{F5B2F6B8-A8CC-4612-8F1D-C063EB8C8955}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F5B2F6B8-A8CC-4612-8F1D-C063EB8C8955}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F5B2F6B8-A8CC-4612-8F1D-C063EB8C8955}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F5B2F6B8-A8CC-4612-8F1D-C063EB8C8955}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2D5F52EC-2A27-4045-81ED-72355E2A6325}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2D5F52EC-2A27-4045-81ED-72355E2A6325}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2D5F52EC-2A27-4045-81ED-72355E2A6325}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2D5F52EC-2A27-4045-81ED-72355E2A6325}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4BE49E02-AAAD-460B-8D00-57F412A3D181}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4BE49E02-AAAD-460B-8D00-57F412A3D181}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4BE49E02-AAAD-460B-8D00-57F412A3D181}.Release|Any CPU.Build.0 = Release|Any CPU
-		{931B95E3-AF9F-4A4C-9C6A-5959C2FBCAC9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{931B95E3-AF9F-4A4C-9C6A-5959C2FBCAC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{931B95E3-AF9F-4A4C-9C6A-5959C2FBCAC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{931B95E3-AF9F-4A4C-9C6A-5959C2FBCAC9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3C300C31-97D3-41E8-A627-C53491BDA28B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3C300C31-97D3-41E8-A627-C53491BDA28B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3C300C31-97D3-41E8-A627-C53491BDA28B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3C300C31-97D3-41E8-A627-C53491BDA28B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A61FFDEE-5725-4650-A788-6E55EE5EFD5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A61FFDEE-5725-4650-A788-6E55EE5EFD5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A61FFDEE-5725-4650-A788-6E55EE5EFD5B}.Release|Any CPU.Build.0 = Release|Any CPU

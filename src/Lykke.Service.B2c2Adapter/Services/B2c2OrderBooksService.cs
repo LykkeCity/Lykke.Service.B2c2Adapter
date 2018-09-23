@@ -1,22 +1,24 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
+using Common;
 using Common.Log;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Exceptions;
 using Lykke.B2c2Client.Models.WebSocket;
 using Lykke.Common.ExchangeAdapter.Contracts;
-using Lykke.Common.ExchangeAdapter.SpotController;
 using Lykke.Common.Log;
 using Lykke.Service.B2c2Adapter.RabbitPublishers;
 using Lykke.Service.B2c2Adapter.Settings;
 
 namespace Lykke.Service.B2c2Adapter.Services
 {
-    public sealed class B2c2OrderBooksService : IOrderBookController, IStartable
+    public sealed class B2c2OrderBooksService : IStartable
     {
         private const string Source = "b2c2";
         private readonly IReadOnlyCollection<InstrumentLevels> _instrumentsLevels;
@@ -40,6 +42,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             _withWithoutSuffixMapping = new ConcurrentDictionary<string, string>();
             _withoutWithSuffixMapping = new ConcurrentDictionary<string, string>();
             _priceMessagesCache = new ConcurrentDictionary<string, PriceMessage>();
+            _orderBooksCache = new ConcurrentDictionary<string, OrderBook>();
             _b2c2RestClient = b2C2RestClient;
             _b2C2WebSocketClient = b2C2WebSocketClient;
             _orderBookPublisher = orderBookPublisher;
@@ -58,14 +61,14 @@ namespace Lykke.Service.B2c2Adapter.Services
             return _withoutWithSuffixMapping.Keys.ToList();
         }
 
-        public async Task<IReadOnlyCollection<TickPrice>> GetAllTickPrices()
+        public IReadOnlyCollection<TickPrice> GetAllTickPrices()
         {
             return _orderBooksCache.Values.Select(TickPrice.FromOrderBook).ToList();
         }
 
-        public async Task<OrderBook> GetOrderBook(string assetPair)
+        public OrderBook GetOrderBook(string assetPair)
         {
-            if (_orderBooksCache.ContainsKey(assetPair))
+            if (!_orderBooksCache.ContainsKey(assetPair))
                 return null;
 
             return _orderBooksCache[assetPair];
@@ -111,12 +114,12 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             _priceMessagesCache[message.Instrument] = message;
 
-            var instrument = _withWithoutSuffixMapping[message.Instrument];
-            _orderBooksCache[instrument] = Convert(message);
-
             // Publish order books
             var orderBook = Convert(message);
             await _orderBookPublisher.PublishAsync(orderBook);
+
+            var instrument = _withWithoutSuffixMapping[message.Instrument];
+            _orderBooksCache[instrument] = orderBook;
 
             // Publish tock prices
             var tickPrice = TickPrice.FromOrderBook(orderBook);

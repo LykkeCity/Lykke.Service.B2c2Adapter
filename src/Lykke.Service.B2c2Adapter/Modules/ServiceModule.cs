@@ -49,8 +49,8 @@ namespace Lykke.Service.B2c2Adapter.Modules
 
             // B2C2 order books service
             builder.RegisterType<B2c2OrderBooksService>()
+                .AsSelf()
                 .As<IStartable>()
-                .As<IStopable>()
                 .SingleInstance()
                 .WithParameter("instrumentsLevels", _settings.InstrumentLevels);
         }

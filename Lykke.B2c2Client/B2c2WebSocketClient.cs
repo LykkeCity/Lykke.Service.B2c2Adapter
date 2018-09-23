@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Common;
 using Common.Log;
 using Lykke.B2c2Client.Exceptions;
 using Lykke.B2c2Client.Models.WebSocket;
@@ -25,9 +27,31 @@ namespace Lykke.B2c2Client
         private readonly object _sync = new object();
         private readonly ConcurrentDictionary<string, Subscription> _awaitingSubscription;
         private readonly ConcurrentDictionary<string, Func<PriceMessage, Task>> _instrumentsHandlers;
+        private readonly ConcurrentDictionary<string, int[]> _instrumentsLevels;
         private readonly ConcurrentDictionary<string, Subscription> _awaitingUnsubscription;
         private readonly IList<string> _tradableInstruments;
         private readonly CancellationTokenSource _cancellationTokenSource;
+        private readonly TimerTrigger _trigger;
+
+        private readonly object _lockTimestamp = new object();
+        private DateTime _timestamp;
+        private DateTime Timestamp
+        {
+            get
+            {
+                lock (_lockTimestamp)
+                {
+                    return _timestamp;
+                }
+            }
+            set
+            {
+                lock (_lockTimestamp)
+                {
+                    _timestamp = value;
+                }
+            }
+        }
 
         public B2c2WebSocketClient(string url, string authorizationToken, ILogFactory logFactory)
         {
@@ -42,9 +66,11 @@ namespace Lykke.B2c2Client
             _clientWebSocket = new ClientWebSocket();
             _awaitingSubscription = new ConcurrentDictionary<string, Subscription>();
             _instrumentsHandlers = new ConcurrentDictionary<string, Func<PriceMessage, Task>>();
+            _instrumentsLevels = new ConcurrentDictionary<string, int[]>();
             _awaitingUnsubscription = new ConcurrentDictionary<string, Subscription>();
             _tradableInstruments = new List<string>();
             _cancellationTokenSource = new CancellationTokenSource();
+            _trigger = new TimerTrigger(nameof(B2c2WebSocketClient), new TimeSpan(0, 1, 0), logFactory, CheckConnection);
         }
 
         public async Task SubscribeAsync(string instrument, int[] levels, Func<PriceMessage, Task> handler,
@@ -59,13 +85,13 @@ namespace Lykke.B2c2Client
             {
                 if (_awaitingSubscription.ContainsKey(instrument)
                     || _instrumentsHandlers.ContainsKey(instrument))
-                    throw new B2c2WebSocketException($"Subscription to {instrument} is already exists.");
+                    throw new B2c2WebSocketException($"Subscription to '{instrument}' is already exists.");
             }
 
             if (_clientWebSocket.State == WebSocketState.None)
                 Connect(ct);
 
-            _log.Info($"Attempt to subscribe to order book updates, tag: {instrument}.");
+            _log.Info($"Attempt to subscribe to order book updates, instrument: '{instrument}'.");
 
             var subscribeRequest = new SubscribeRequest { Instrument = instrument, Levels = levels, Tag = tag };
             var request = StringToArraySegment(JsonConvert.SerializeObject(subscribeRequest));
@@ -75,17 +101,23 @@ namespace Lykke.B2c2Client
             lock (_sync)
             {
                 _awaitingSubscription[instrument] = new Subscription(tag, taskCompletionSource, handler);
+                _instrumentsLevels[instrument] = levels;
             }
 
-            await Task.Delay(_timeOut, ct);
-            if (!ct.IsCancellationRequested)
+            #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            Task.Run(async () =>
             {
-                lock (_sync)
+                await Task.Delay(_timeOut, ct);
+                if (!ct.IsCancellationRequested)
                 {
-                    _awaitingSubscription.TryRemove(instrument, out _);
+                    lock (_sync)
+                    {
+                        _awaitingSubscription.TryRemove(instrument, out _);
+                    }
+                    taskCompletionSource.TrySetException(new B2c2WebSocketException("Timeout."));
                 }
-                taskCompletionSource.TrySetException(new B2c2WebSocketException("Timeout."));
-            }
+            }, ct);
+            #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
         }
 
         public async Task UnsubscribeAsync(string instrument, CancellationToken ct = default(CancellationToken))
@@ -249,12 +281,14 @@ namespace Lykke.B2c2Client
                 if (_instrumentsHandlers.ContainsKey(result.Instrument))
                     subscription.TaskCompletionSource.TrySetException(new B2c2WebSocketException($"Attempt to second subscription to {result.Instrument}."));
 
-                _instrumentsHandlers[instrument] = subscription.Function;                
+                _instrumentsHandlers[instrument] = subscription.Function;
             }
         }
 
         private void HandlePriceMessage(JToken jToken)
         {
+            Timestamp = DateTime.UtcNow;
+
             if (jToken["success"]?.Value<bool>() == false)
             {
                 _log.Error($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}");
@@ -265,7 +299,7 @@ namespace Lykke.B2c2Client
             lock (_sync)
             {
                 var handler = _instrumentsHandlers[result.Instrument];
-                handler(result);
+                handler(result).GetAwaiter().GetResult();
             }
         }
 
@@ -308,6 +342,34 @@ namespace Lykke.B2c2Client
             var messageBytes = Encoding.UTF8.GetBytes(message);
             var messageArraySegment = new ArraySegment<byte>(messageBytes);
             return messageArraySegment;
+        }
+
+        private async Task CheckConnection(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
+        {
+            try
+            {
+                if (DateTime.UtcNow - Timestamp > new TimeSpan(0, 1, 0))
+                {
+                    await DisconnectAsync(ct);
+                    await Task.Delay(new TimeSpan(0, 0, 20), ct);
+                }
+
+                if (_clientWebSocket.State == WebSocketState.Aborted ||
+                    _clientWebSocket.State == WebSocketState.CloseReceived ||
+                    _clientWebSocket.State == WebSocketState.Closed)
+                {
+                    foreach (var instrument in _instrumentsHandlers.Keys)
+                    {
+                        var levels = _instrumentsLevels[instrument];
+                        var handler = _instrumentsHandlers[instrument];
+                        await SubscribeAsync(instrument, levels, handler, ct);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex);
+            }
         }
 
         #region IDisposable
