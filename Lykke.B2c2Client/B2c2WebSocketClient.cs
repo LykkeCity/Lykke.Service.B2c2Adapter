@@ -42,6 +42,7 @@ namespace Lykke.B2c2Client
             _clientWebSocket = new ClientWebSocket();
             _awaitingSubscription = new ConcurrentDictionary<string, Subscription>();
             _instrumentsHandlers = new ConcurrentDictionary<string, Func<PriceMessage, Task>>();
+            _awaitingUnsubscription = new ConcurrentDictionary<string, Subscription>();
             _tradableInstruments = new List<string>();
             _cancellationTokenSource = new CancellationTokenSource();
         }
