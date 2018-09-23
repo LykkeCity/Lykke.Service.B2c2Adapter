@@ -15,7 +15,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Lykke.B2c2Client
 {
-    public class B2c2WebSocketClient : IB2c2WebSocketClient, IDisposable
+    public class B2c2WebSocketClient : IB2c2WebSocketClient
     {
         private readonly TimeSpan _timeOut = new TimeSpan(0, 0, 0, 30);
         private readonly string _baseUri;
@@ -27,7 +27,7 @@ namespace Lykke.B2c2Client
         private readonly ConcurrentDictionary<string, Func<PriceMessage, Task>> _instrumentsHandlers;
         private readonly ConcurrentDictionary<string, Subscription> _awaitingUnsubscription;
         private readonly IList<string> _tradableInstruments;
-        private readonly CancellationTokenSource _tokenSource;
+        private readonly CancellationTokenSource _cancellationTokenSource;
 
         public B2c2WebSocketClient(string url, string authorizationToken, ILogFactory logFactory)
         {
@@ -43,7 +43,7 @@ namespace Lykke.B2c2Client
             _awaitingSubscription = new ConcurrentDictionary<string, Subscription>();
             _instrumentsHandlers = new ConcurrentDictionary<string, Func<PriceMessage, Task>>();
             _tradableInstruments = new List<string>();
-            _tokenSource = new CancellationTokenSource();
+            _cancellationTokenSource = new CancellationTokenSource();
         }
 
         public async Task SubscribeAsync(string instrument, int[] levels, Func<PriceMessage, Task> handler,
@@ -153,8 +153,8 @@ namespace Lykke.B2c2Client
             // Listen for messages in separate io thread
             Task.Run(async () =>
                 {
-                    await HandleMessagesCycleAsync(_tokenSource.Token);
-                }, _tokenSource.Token)
+                    await HandleMessagesCycleAsync(_cancellationTokenSource.Token);
+                }, _cancellationTokenSource.Token)
                 .ContinueWith(t =>
                 {
                     if (t.IsFaulted)
@@ -324,21 +324,19 @@ namespace Lykke.B2c2Client
 
         protected virtual void Dispose(bool disposing)
         {
-            if (disposing)
+            if (!disposing) return;
+            
+            if (_clientWebSocket != null)
             {
-                // Dispose managed resources
-                if (_clientWebSocket != null)
-                {
-                    _clientWebSocket.Abort();
-                    _clientWebSocket.Dispose();
-                    _clientWebSocket = null;
-                }
+                _clientWebSocket.Abort();
+                _clientWebSocket.Dispose();
+                _clientWebSocket = null;
+            }
 
-                if (_tokenSource != null && _tokenSource.Token.CanBeCanceled)
-                {
-                    _tokenSource.Cancel();
-                    _tokenSource.Dispose();
-                }
+            if (_cancellationTokenSource != null && _cancellationTokenSource.Token.CanBeCanceled)
+            {
+                _cancellationTokenSource.Cancel();
+                _cancellationTokenSource.Dispose();
             }
         }
 

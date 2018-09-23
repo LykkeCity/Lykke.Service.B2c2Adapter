@@ -184,7 +184,6 @@ namespace Lykke.B2c2Client
             }
         }
 
-
         private void CheckForError(string response, HttpStatusCode status, Guid guid)
         {
             if (response.Contains("errors"))
