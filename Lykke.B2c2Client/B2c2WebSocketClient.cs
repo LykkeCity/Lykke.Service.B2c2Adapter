@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -259,6 +260,12 @@ namespace Lykke.B2c2Client
 
         private void HandleTradableInstrumentMessage(JToken jToken)
         {
+            if (jToken["success"] == null)
+            {
+                _log.Warning($"HandlePriceMessage received strange message. {jToken}");
+                return;
+            }
+
             if (jToken["success"]?.Value<bool>() == false)
             {
                 _log.Warning($"{nameof(ConnectResponse)}.{nameof(ConnectResponse.Success)} == false. {jToken}");
@@ -272,6 +279,12 @@ namespace Lykke.B2c2Client
 
         private void HandleSubscribeMessage(JToken jToken)
         {
+            if (jToken["instrument"] == null || jToken["tag"] == null || jToken["success"] == null)
+            {
+                _log.Warning($"HandleSubscribeMessage received strange message. {jToken}");
+                return;
+            }
+
             var instrument = jToken["instrument"].Value<string>();
             var tag = jToken["tag"].Value<string>();
             if (jToken["success"]?.Value<bool>() == false)
@@ -305,6 +318,12 @@ namespace Lykke.B2c2Client
 
         private void HandlePriceMessage(JToken jToken)
         {
+            if (jToken["success"] == null)
+            {
+                _log.Warning($"HandlePriceMessage received strange message. {jToken}");
+                return;
+            }
+
             Timestamp = DateTime.UtcNow;
 
             if (jToken["success"]?.Value<bool>() == false)
@@ -330,6 +349,12 @@ namespace Lykke.B2c2Client
 
         private void HandleUnsubscribeMessage(JToken jToken)
         {
+            if (jToken["instrument"] == null || jToken["tag"] == null || jToken["success"] == null)
+            {
+                _log.Warning($"HandleSubscribeMessage received strange message. {jToken}");
+                return;
+            }
+
             var instrument = jToken["instrument"].Value<string>();
             var tag = jToken["tag"].Value<string>();
             if (jToken["success"]?.Value<bool>() == false)
