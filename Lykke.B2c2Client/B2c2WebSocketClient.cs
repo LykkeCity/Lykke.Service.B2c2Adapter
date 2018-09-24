@@ -25,10 +25,10 @@ namespace Lykke.B2c2Client
         private readonly ILog _log;
         private ClientWebSocket _clientWebSocket;
         private readonly object _sync = new object();
-        private readonly ConcurrentDictionary<string, Subscription> _awaitingSubscription;
+        private readonly ConcurrentDictionary<string, Subscription> _awaitingSubscriptions;
         private readonly ConcurrentDictionary<string, Func<PriceMessage, Task>> _instrumentsHandlers;
         private readonly ConcurrentDictionary<string, int[]> _instrumentsLevels;
-        private readonly ConcurrentDictionary<string, Subscription> _awaitingUnsubscription;
+        private readonly ConcurrentDictionary<string, Subscription> _awaitingUnsubscriptions;
         private readonly IList<string> _tradableInstruments;
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly TimerTrigger _trigger;
@@ -64,10 +64,10 @@ namespace Lykke.B2c2Client
             _authorizationToken = authorizationToken;
             _log = logFactory.CreateLog(this);
             _clientWebSocket = new ClientWebSocket();
-            _awaitingSubscription = new ConcurrentDictionary<string, Subscription>();
+            _awaitingSubscriptions = new ConcurrentDictionary<string, Subscription>();
             _instrumentsHandlers = new ConcurrentDictionary<string, Func<PriceMessage, Task>>();
             _instrumentsLevels = new ConcurrentDictionary<string, int[]>();
-            _awaitingUnsubscription = new ConcurrentDictionary<string, Subscription>();
+            _awaitingUnsubscriptions = new ConcurrentDictionary<string, Subscription>();
             _tradableInstruments = new List<string>();
             _cancellationTokenSource = new CancellationTokenSource();
             _trigger = new TimerTrigger(nameof(B2c2WebSocketClient), new TimeSpan(0, 1, 0), logFactory, ReconnectIfNeeded);
@@ -95,7 +95,7 @@ namespace Lykke.B2c2Client
             lock (_sync)
             {
                 if (!reconnecting
-                    && (_awaitingSubscription.ContainsKey(instrument) || _instrumentsHandlers.ContainsKey(instrument)))
+                    && (_awaitingSubscriptions.ContainsKey(instrument) || _instrumentsHandlers.ContainsKey(instrument)))
                     throw new B2c2WebSocketException($"Subscription to '{instrument}' is already exists.");
             }
 
@@ -111,7 +111,7 @@ namespace Lykke.B2c2Client
             var taskCompletionSource = new TaskCompletionSource<int>();
             lock (_sync)
             {
-                _awaitingSubscription[instrument] = new Subscription(tag, taskCompletionSource, handler);
+                _awaitingSubscriptions[instrument] = new Subscription(tag, taskCompletionSource, handler);
                 _instrumentsLevels[instrument] = levels;
             }
 
@@ -123,7 +123,7 @@ namespace Lykke.B2c2Client
                 {
                     lock (_sync)
                     {
-                        _awaitingSubscription.TryRemove(instrument, out _);
+                        _awaitingSubscriptions.TryRemove(instrument, out _);
                     }
                     taskCompletionSource.TrySetException(new B2c2WebSocketException("Timeout."));
                 }
@@ -154,7 +154,7 @@ namespace Lykke.B2c2Client
             var taskCompletionSource = new TaskCompletionSource<int>();
             lock (_sync)
             {
-                _awaitingUnsubscription[instrument] = new Subscription(tag, taskCompletionSource);
+                _awaitingUnsubscriptions[instrument] = new Subscription(tag, taskCompletionSource);
             }
 
             await Task.Delay(_timeOut, ct);
@@ -162,7 +162,7 @@ namespace Lykke.B2c2Client
             {
                 lock (_sync)
                 {
-                    _awaitingUnsubscription.TryRemove(instrument, out _);
+                    _awaitingUnsubscriptions.TryRemove(instrument, out _);
                 }
                 taskCompletionSource.TrySetException(new B2c2WebSocketException("Timeout."));
             }
@@ -199,7 +199,7 @@ namespace Lykke.B2c2Client
                 _clientWebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Normal closure.", ct).GetAwaiter().GetResult();
             }
 
-            _awaitingSubscription.Clear();
+            _awaitingSubscriptions.Clear();
             _instrumentsHandlers.Clear();
             _tradableInstruments.Clear();
 
@@ -260,12 +260,6 @@ namespace Lykke.B2c2Client
 
         private void HandleTradableInstrumentMessage(JToken jToken)
         {
-            if (jToken["success"] == null)
-            {
-                _log.Warning($"HandlePriceMessage received strange message. {jToken}");
-                return;
-            }
-
             if (jToken["success"]?.Value<bool>() == false)
             {
                 _log.Warning($"{nameof(ConnectResponse)}.{nameof(ConnectResponse.Success)} == false. {jToken}");
@@ -279,20 +273,14 @@ namespace Lykke.B2c2Client
 
         private void HandleSubscribeMessage(JToken jToken)
         {
-            if (jToken["instrument"] == null || jToken["tag"] == null || jToken["success"] == null)
-            {
-                _log.Warning($"HandleSubscribeMessage received strange message. {jToken}");
-                return;
-            }
-
-            var instrument = jToken["instrument"].Value<string>();
             var tag = jToken["tag"].Value<string>();
             if (jToken["success"]?.Value<bool>() == false)
             {
                 var message = $"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}";
                 lock (_sync)
                 {
-                    _awaitingSubscription.Remove(instrument, out var value);
+                    var instrument = _awaitingSubscriptions.Where(x => x.Value.Tag == tag).Select(x => x.Key).Single();
+                    _awaitingSubscriptions.Remove(instrument, out var value);
                     if (tag != value.Tag)
                         value.TaskCompletionSource.TrySetException(new InvalidOperationException($"Tags are not the same: {tag}, {value.Tag}."));
                     value.TaskCompletionSource.TrySetException(new B2c2WebSocketException(message));
@@ -304,13 +292,14 @@ namespace Lykke.B2c2Client
             var result = jToken.ToObject<SubscribeMessage>();
             lock (_sync)
             {
-                if (!_awaitingSubscription.ContainsKey(instrument))
-                    _log.Warning($"Subscriptions doesn't have element with '{result.Instrument}.");
+                var instrument = result.Instrument;
+                if (!_awaitingSubscriptions.ContainsKey(instrument))
+                    _log.Warning($"Subscriptions doesn't have element with '{instrument}.");
 
-                _awaitingSubscription.Remove(instrument, out var subscription);
+                _awaitingSubscriptions.Remove(instrument, out var subscription);
                 
-                if (_instrumentsHandlers.ContainsKey(result.Instrument))
-                    subscription.TaskCompletionSource.TrySetException(new B2c2WebSocketException($"Attempt to second subscription to {result.Instrument}."));
+                if (_instrumentsHandlers.ContainsKey(instrument))
+                    subscription.TaskCompletionSource.TrySetException(new B2c2WebSocketException($"Attempt to second subscription to {instrument}."));
 
                 _instrumentsHandlers[instrument] = subscription.Function;
             }
@@ -318,12 +307,6 @@ namespace Lykke.B2c2Client
 
         private void HandlePriceMessage(JToken jToken)
         {
-            if (jToken["success"] == null)
-            {
-                _log.Warning($"HandlePriceMessage received strange message. {jToken}");
-                return;
-            }
-
             Timestamp = DateTime.UtcNow;
 
             if (jToken["success"]?.Value<bool>() == false)
@@ -349,21 +332,15 @@ namespace Lykke.B2c2Client
 
         private void HandleUnsubscribeMessage(JToken jToken)
         {
-            if (jToken["instrument"] == null || jToken["tag"] == null || jToken["success"] == null)
-            {
-                _log.Warning($"HandleSubscribeMessage received strange message. {jToken}");
-                return;
-            }
-
-            var instrument = jToken["instrument"].Value<string>();
             var tag = jToken["tag"].Value<string>();
             if (jToken["success"]?.Value<bool>() == false)
             {
                 var message = $"{nameof(UnsubscribeMessage)}.{nameof(UnsubscribeMessage.Success)} == false. {jToken}";
                 lock (_sync)
                 {
+                    var instrument = _awaitingUnsubscriptions.Where(x => x.Value.Tag == tag).Select(x => x.Key).Single();
                     _instrumentsHandlers.Remove(instrument, out _);
-                    _awaitingUnsubscription.Remove(instrument, out var value);
+                    _awaitingUnsubscriptions.Remove(instrument, out var value);
                     if (tag != value.Tag)
                         value.TaskCompletionSource.TrySetException(new InvalidOperationException($"Tags are not the same: {tag}, {value.Tag}."));
                     value.TaskCompletionSource.TrySetException(new B2c2WebSocketException(message));
@@ -375,10 +352,11 @@ namespace Lykke.B2c2Client
             var result = jToken.ToObject<UnsubscribeMessage>();
             lock (_sync)
             {
-                if (!_awaitingUnsubscription.ContainsKey(instrument))
+                var instrument = jToken["instrument"].Value<string>();
+                if (!_awaitingUnsubscriptions.ContainsKey(instrument))
                     _log.Warning($"Can't unsubscribe from '{instrument}', subscription does not exist. {jToken}");
 
-                _awaitingUnsubscription.Remove(instrument, out var subscription);
+                _awaitingUnsubscriptions.Remove(instrument, out var subscription);
 
                 if (_instrumentsHandlers.ContainsKey(result.Instrument))
                     subscription.TaskCompletionSource.TrySetException(new B2c2WebSocketException($"Attempt to second subscription to {result.Instrument}."));
@@ -398,7 +376,7 @@ namespace Lykke.B2c2Client
         {
             try
             {
-                if (_instrumentsHandlers.Count == 0 && _awaitingSubscription.Count == 0)
+                if (_instrumentsHandlers.Count == 0 && _awaitingSubscriptions.Count == 0)
                     return;
 
                 if (Timestamp == default(DateTime))
