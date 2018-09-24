@@ -381,14 +381,14 @@ namespace Lykke.B2c2Client
                 {
                     _clientWebSocket.Dispose();
                     _clientWebSocket = new ClientWebSocket();
-                }
 
-                foreach (var instrument in _instrumentsHandlers.Keys)
-                {
-                    var levels = _instrumentsLevels[instrument];
-                    var handler = _instrumentsHandlers[instrument];
+                    foreach (var instrument in _instrumentsHandlers.Keys)
+                    {
+                        var levels = _instrumentsLevels[instrument];
+                        var handler = _instrumentsHandlers[instrument];
 
-                    await SubscribeAsync(instrument, levels, handler, ct, true);
+                        await SubscribeAsync(instrument, levels, handler, ct, true);
+                    }
                 }
             }
             catch (Exception ex)
