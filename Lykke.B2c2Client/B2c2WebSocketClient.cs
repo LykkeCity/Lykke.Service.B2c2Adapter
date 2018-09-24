@@ -379,27 +379,30 @@ namespace Lykke.B2c2Client
                 if (Timestamp == default(DateTime))
                     return;
 
-                if (DateTime.UtcNow - Timestamp > new TimeSpan(0, 1, 0))
+                if (_clientWebSocket.State != WebSocketState.Open
+                    || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnyPriceMessageFor(new TimeSpan(0, 3, 0)))
                 {
-                    if (_clientWebSocket.State != WebSocketState.Open)
-                    {
-                        _clientWebSocket.Dispose();
-                        _clientWebSocket = new ClientWebSocket();
-                    }
+                    _clientWebSocket.Dispose();
+                    _clientWebSocket = new ClientWebSocket();
+                }
 
-                    foreach (var instrument in _instrumentsHandlers.Keys)
-                    {
-                        var levels = _instrumentsLevels[instrument];
-                        var handler = _instrumentsHandlers[instrument];
+                foreach (var instrument in _instrumentsHandlers.Keys)
+                {
+                    var levels = _instrumentsLevels[instrument];
+                    var handler = _instrumentsHandlers[instrument];
 
-                        await SubscribeAsync(instrument, levels, handler, ct, true);
-                    }
+                    await SubscribeAsync(instrument, levels, handler, ct, true);
                 }
             }
             catch (Exception ex)
             {
                 _log.Error(ex);
             }
+        }
+
+        private bool HasNotReceivedAnyPriceMessageFor(TimeSpan timeSpan)
+        {
+            return DateTime.UtcNow - Timestamp > timeSpan;
         }
 
         #region IDisposable
