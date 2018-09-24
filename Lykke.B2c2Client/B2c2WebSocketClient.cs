@@ -280,8 +280,6 @@ namespace Lykke.B2c2Client
                 {
                     var instrument = _awaitingSubscriptions.Where(x => x.Value.Tag == tag).Select(x => x.Key).Single();
                     _awaitingSubscriptions.Remove(instrument, out var value);
-                    if (tag != value.Tag)
-                        value.TaskCompletionSource.TrySetException(new InvalidOperationException($"Tags are not the same: {tag}, {value.Tag}."));
                     value.TaskCompletionSource.TrySetException(new B2c2WebSocketException(message));
                 }
 
@@ -338,10 +336,7 @@ namespace Lykke.B2c2Client
                 lock (_sync)
                 {
                     var instrument = _awaitingUnsubscriptions.Where(x => x.Value.Tag == tag).Select(x => x.Key).Single();
-                    _instrumentsHandlers.Remove(instrument, out _);
                     _awaitingUnsubscriptions.Remove(instrument, out var value);
-                    if (tag != value.Tag)
-                        value.TaskCompletionSource.TrySetException(new InvalidOperationException($"Tags are not the same: {tag}, {value.Tag}."));
                     value.TaskCompletionSource.TrySetException(new B2c2WebSocketException(message));
                 }
 
