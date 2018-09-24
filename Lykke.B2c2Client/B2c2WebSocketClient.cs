@@ -206,7 +206,6 @@ namespace Lykke.B2c2Client
             _log.Info("Connection to WebSocket was sucessfuly closed.");
         }
         
-
         private async Task HandleMessagesCycleAsync(CancellationToken ct)
         {
             while (_clientWebSocket.State == WebSocketState.Open)
