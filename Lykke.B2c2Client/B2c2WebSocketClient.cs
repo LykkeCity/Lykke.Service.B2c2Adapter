@@ -210,20 +210,27 @@ namespace Lykke.B2c2Client
         {
             while (_clientWebSocket.State == WebSocketState.Open)
             {
-                using (var stream = new MemoryStream(8192))
+                try
                 {
-                    var receiveBuffer = new ArraySegment<byte>(new byte[1024]);
-                    WebSocketReceiveResult receiveResult;
-                    do
+                    using (var stream = new MemoryStream(8192))
                     {
-                        receiveResult = await _clientWebSocket.ReceiveAsync(receiveBuffer, ct);
-                        await stream.WriteAsync(receiveBuffer.Array, receiveBuffer.Offset, receiveResult.Count, ct);
-                    } while (!receiveResult.EndOfMessage);
+                        var receiveBuffer = new ArraySegment<byte>(new byte[1024]);
+                        WebSocketReceiveResult receiveResult;
+                        do
+                        {
+                            receiveResult = await _clientWebSocket.ReceiveAsync(receiveBuffer, ct);
+                            await stream.WriteAsync(receiveBuffer.Array, receiveBuffer.Offset, receiveResult.Count, ct);
+                        } while (!receiveResult.EndOfMessage);
 
-                    var messageBytes = stream.ToArray();
-                    var jsonMessage = Encoding.UTF8.GetString(messageBytes, 0, messageBytes.Length);
+                        var messageBytes = stream.ToArray();
+                        var jsonMessage = Encoding.UTF8.GetString(messageBytes, 0, messageBytes.Length);
 
-                    HandleWebSocketMessageAsync(jsonMessage);
+                        HandleWebSocketMessageAsync(jsonMessage);
+                    }
+                }
+                catch (Exception e)
+                {
+                    _log.Error(e, "Error while processing a message from websocket.");
                 }
             }
         }
@@ -254,7 +261,7 @@ namespace Lykke.B2c2Client
         {
             if (jToken["success"]?.Value<bool>() == false)
             {
-                _log.Error($"{nameof(ConnectResponse)}.{nameof(ConnectResponse.Success)} == false. {jToken}");
+                _log.Warning($"{nameof(ConnectResponse)}.{nameof(ConnectResponse.Success)} == false. {jToken}");
                 return;
             }
 
@@ -285,7 +292,7 @@ namespace Lykke.B2c2Client
             lock (_sync)
             {
                 if (!_awaitingSubscription.ContainsKey(instrument))
-                    _log.Error($"Subscriptions doesn't have element with {result.Instrument}.");
+                    _log.Warning($"Subscriptions doesn't have element with '{result.Instrument}.");
 
                 _awaitingSubscription.Remove(instrument, out var subscription);
                 
@@ -302,7 +309,7 @@ namespace Lykke.B2c2Client
 
             if (jToken["success"]?.Value<bool>() == false)
             {
-                _log.Error($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}");
+                _log.Warning($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}");
                 return;
             }
 
@@ -344,7 +351,7 @@ namespace Lykke.B2c2Client
             lock (_sync)
             {
                 if (!_awaitingUnsubscription.ContainsKey(instrument))
-                    _log.Error($"Can't unsubscribe from '{instrument}', subscription does not exist. {jToken}");
+                    _log.Warning($"Can't unsubscribe from '{instrument}', subscription does not exist. {jToken}");
 
                 _awaitingUnsubscription.Remove(instrument, out var subscription);
 
