@@ -11,7 +11,5 @@ namespace Lykke.B2c2Client
             CancellationToken ct = default(CancellationToken));
 
         Task UnsubscribeAsync(string instrument, CancellationToken ct = default(CancellationToken));
-
-        Task DisconnectAsync(CancellationToken ct = default(CancellationToken));
     }
 }
