@@ -16,15 +16,8 @@ namespace Lykke.B2c2Client.Exceptions
         {
         }
 
-        //public override string Message
-        //{
-        //    get
-        //    {
-        //        if (ErrorResponse != null)
-        //            return $"{ErrorResponse.Errors.FirstOrDefault()?.Code} : {ErrorResponse.Errors.FirstOrDefault()?.Message}, guid: {RequestId}";
-
-        //        return $"Message: '{base.Message}', guid: {RequestId}";
-        //    }
-        //}
+        public B2c2WebSocketException(string message, Exception e) : base(message, e)
+        {
+        }
     }
 }

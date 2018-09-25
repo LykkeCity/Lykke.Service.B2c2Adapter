@@ -17,10 +17,10 @@ namespace Lykke.B2c2Client.Models.Rest
         public Side Side { get; set; }
 
         [JsonProperty("price")]
-        public decimal Price { get; set; }
+        public double Price { get; set; }
 
         [JsonProperty("quantity")]
-        public decimal Quantity { get; set; }
+        public double Quantity { get; set; }
 
         [JsonProperty("order_type"), JsonConverter(typeof(StringEnumConverter))]
         public OrderType OrderType { get; set; }

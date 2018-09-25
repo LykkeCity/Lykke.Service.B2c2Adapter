@@ -20,13 +20,13 @@ namespace Lykke.B2c2Client.Models.Rest
         public Side Side { get; set; }
 
         [JsonProperty("price")]
-        public decimal Price { get; set; }
+        public double Price { get; set; }
 
         /// Quantity in base currency (maximum 4 decimals).
         [JsonProperty("quantity")]
-        public decimal Quantity { get; set; }
+        public double Quantity { get; set; }
 
-        // Absent
+        // Present in documentation but absent in real data
         //[JsonProperty("created"), JsonConverter(typeof(IsoDateTimeConverter))]
         //public DateTime Created { get; set; }
 

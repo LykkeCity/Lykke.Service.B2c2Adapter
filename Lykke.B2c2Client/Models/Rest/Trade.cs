@@ -19,10 +19,10 @@ namespace Lykke.B2c2Client.Models.Rest
         public Side Side { get; set; }
 
         [JsonProperty("price")]
-        public decimal Price { get; set; }
+        public double Price { get; set; }
 
         [JsonProperty("quantity")]
-        public decimal Quantity { get; set; }
+        public double Quantity { get; set; }
 
         [JsonProperty("order")]
         public string Order { get; set; }

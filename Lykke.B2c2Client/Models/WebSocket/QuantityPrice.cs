@@ -9,5 +9,11 @@ namespace Lykke.B2c2Client.Models.WebSocket
 
         [JsonProperty("price")]
         public decimal Price { get; set; }
+
+        public QuantityPrice(double quantity, double price)
+        {
+            Quantity = (decimal)quantity;
+            Price = (decimal)price;
+        }
     }
 }

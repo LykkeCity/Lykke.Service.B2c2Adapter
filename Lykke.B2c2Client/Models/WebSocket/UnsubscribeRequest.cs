@@ -2,7 +2,7 @@
 
 namespace Lykke.B2c2Client.Models.WebSocket
 {
-    public class UnsubscribeRequest
+    public class UnsubscribeRequest : IRequest
     {
         [JsonProperty("event")]
         public string Event { get; set; } = "unsubscribe";

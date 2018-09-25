@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
-using Common;
 using Common.Log;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Exceptions;
@@ -150,7 +147,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             var result = new List<OrderBookItem>();
 
             foreach (var qp in quantitiesPrices)
-                result.Add(new OrderBookItem(qp.Price, qp.Quantity));
+                result.Add(new OrderBookItem((decimal)qp.Price, (decimal)qp.Quantity));
 
             return result;
         }
