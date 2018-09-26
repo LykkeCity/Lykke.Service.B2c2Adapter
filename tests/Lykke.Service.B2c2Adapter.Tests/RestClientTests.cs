@@ -10,7 +10,7 @@ namespace Lykke.Service.B2c2Adapter.Tests
         private const string Url = "https://sandboxapi.b2c2.net/";
         private const string Token = "1bbe66d9dda462f37e7159c091e86994593b88d5";
 
-        [Fact]
+        //[Fact]
         public async void BalanceTest()
         {
             var restClient = new B2С2RestClient(new B2C2ClientSettings(Url, Token), LogFactory.Create());
@@ -21,7 +21,7 @@ namespace Lykke.Service.B2c2Adapter.Tests
             Assert.DoesNotContain("", result.Keys);
         }
 
-        [Fact]
+        //[Fact]
         public async void InstrumentsTest()
         {
             var restClient = new B2С2RestClient(new B2C2ClientSettings(Url, Token), LogFactory.Create());
