@@ -55,12 +55,12 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         public IReadOnlyCollection<string> GetAllInstruments()
         {
-            return _withoutWithSuffixMapping.Keys.ToList();
+            return _withoutWithSuffixMapping.Keys.OrderBy(x => x).ToList();
         }
 
         public IReadOnlyCollection<TickPrice> GetAllTickPrices()
         {
-            return _orderBooksCache.Values.Select(TickPrice.FromOrderBook).ToList();
+            return _orderBooksCache.Values.Select(TickPrice.FromOrderBook).OrderBy(x => x.Asset).ToList();
         }
 
         public OrderBook GetOrderBook(string assetPair)
