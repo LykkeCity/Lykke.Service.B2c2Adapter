@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Autofac;
-using Autofac.Features.AttributeFilters;
 using Common.Log;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Exceptions;
@@ -22,9 +21,8 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly IReadOnlyCollection<InstrumentLevels> _instrumentsLevels;
         private readonly ConcurrentDictionary<string, string> _withWithoutSuffixMapping;
         private readonly ConcurrentDictionary<string, string> _withoutWithSuffixMapping;
-        private readonly ConcurrentDictionary<string, PriceMessage> _priceMessagesCache;
         private readonly ConcurrentDictionary<string, OrderBook> _orderBooksCache;
-        private readonly IB2С2RestClient _b2c2RestClient;
+        private readonly IB2С2RestClient _b2C2RestClient;
         private readonly IB2С2WebSocketClient _b2C2WebSocketClient;
         private readonly IOrderBookPublisher _orderBookPublisher;
         private readonly ITickPricePublisher _tickPricePublisher;
@@ -42,9 +40,8 @@ namespace Lykke.Service.B2c2Adapter.Services
             _instrumentsLevels = instrumentsLevels;
             _withWithoutSuffixMapping = new ConcurrentDictionary<string, string>();
             _withoutWithSuffixMapping = new ConcurrentDictionary<string, string>();
-            _priceMessagesCache = new ConcurrentDictionary<string, PriceMessage>();
             _orderBooksCache = new ConcurrentDictionary<string, OrderBook>();
-            _b2c2RestClient = b2C2RestClient;
+            _b2C2RestClient = b2C2RestClient;
             _b2C2WebSocketClient = b2C2WebSocketClient;
             _orderBookPublisher = orderBookPublisher;
             _tickPricePublisher = tickPricePublisher;
@@ -77,7 +74,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private void InitializeAssetPairs()
         {
-            var instruments = _b2c2RestClient.InstrumentsAsync().GetAwaiter().GetResult();
+            var instruments = _b2C2RestClient.InstrumentsAsync().GetAwaiter().GetResult();
             foreach (var instrument in instruments)
             {
                 var withoutSpotSuffix = InstrumentWoSuffix(instrument.Name);
@@ -113,8 +110,6 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private async Task HandleAsync(PriceMessage message)
         {
-            _priceMessagesCache[message.Instrument] = message;
-
             // Publish order books
             var orderBook = Convert(message);
             await _orderBookPublisher.PublishAsync(orderBook);
@@ -151,7 +146,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             var result = new List<OrderBookItem>();
 
             foreach (var qp in quantitiesPrices)
-                result.Add(new OrderBookItem((decimal)qp.Price, (decimal)qp.Quantity));
+                result.Add(new OrderBookItem(qp.Price, qp.Quantity));
 
             return result;
         }
