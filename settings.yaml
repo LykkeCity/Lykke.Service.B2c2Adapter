@@ -14,6 +14,9 @@ B2c2AdapterService:
         types: 
             - JsonArray
 
+    RfqOrderBooksSleepInterval:
+        settings-key: B2C2AdapterService-RfqOrderBooksSleepInterval
+
     Db:
         LogsConnString:
             settings-key: B2C2AdapterService-LogsConnectionString
@@ -40,6 +43,24 @@ B2c2AdapterService:
                     - RabbitMq 
             ExchangeName:
                 settings-key: B2C2AdapterService-TickPricesExchangeName
+        OrderBooksRfq:
+            Enabled:
+                settings-key: B2C2AdapterService-OrderBooksRfqEnabled
+            ConnectionString:
+                settings-key: B2C2AdapterService-OrderBooksRfqConnectionString
+                types:
+                    - RabbitMq
+            ExchangeName:
+                settings-key: B2C2AdapterService-OrderBooksRfqExchangeName
+        TickPricesRfq:
+            Enabled:
+                settings-key: B2C2AdapterService-TickPricesRfqEnabled
+            ConnectionString:
+                settings-key: B2C2AdapterService-TickPricesRfqConnectionString
+                types:
+                    - RabbitMq 
+            ExchangeName:
+                settings-key: B2C2AdapterService-TickPricesRfqExchangeName
 
 SlackNotifications:
     AzureQueue:
