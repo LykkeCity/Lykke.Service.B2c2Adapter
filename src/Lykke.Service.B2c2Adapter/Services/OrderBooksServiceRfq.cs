@@ -33,7 +33,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             ITickPricePublisherRfq tickPricePublisherRfq,
             ILogFactory logFactory)
         {
-            _instrumentsLevels = instrumentsLevels == null || !instrumentsLevels.Any() ? throw new ArgumentOutOfRangeException(nameof(_instrumentsLevels)) : instrumentsLevels.Where(x => x.Instrument == "BTCUSD").ToList().AsReadOnly();
+            _instrumentsLevels = instrumentsLevels == null || !instrumentsLevels.Any() ? throw new ArgumentOutOfRangeException(nameof(_instrumentsLevels)) : instrumentsLevels;
             _trigger = new TimerTrigger(nameof(OrderBooksServiceRfq), sleepInterval, logFactory, Execute);
             _b2C2RestClient = b2C2RestClient ?? throw new NullReferenceException(nameof(b2C2RestClient));
             _orderBookPublisherRfq = orderBookPublisherRfq ?? throw new NullReferenceException(nameof(orderBookPublisherRfq));
