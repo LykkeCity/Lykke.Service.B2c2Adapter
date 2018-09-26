@@ -51,7 +51,7 @@ namespace Lykke.Service.B2c2Adapter.RabbitPublishers
 
         public async Task PublishAsync(TickPrice message)
         {
-            if (!_settting.Enabled)
+            if (_publisher == null || !_settting.Enabled)
                 return;
 
             await _publisher.ProduceAsync(message);

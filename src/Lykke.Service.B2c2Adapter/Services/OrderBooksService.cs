@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -30,22 +31,23 @@ namespace Lykke.Service.B2c2Adapter.Services
         private const string Suffix = ".SPOT";
 
         public OrderBooksService(
-            IReadOnlyCollection<InstrumentLevels> instrumentsLevels, 
+            IReadOnlyList<InstrumentLevels> instrumentsLevels, 
             IB2С2RestClient b2C2RestClient,
             IB2С2WebSocketClient b2C2WebSocketClient,
             IOrderBookPublisher orderBookPublisher,
             ITickPricePublisher tickPricePublisher,
             ILogFactory logFactory)
         {
-            _instrumentsLevels = instrumentsLevels;
+            _instrumentsLevels = instrumentsLevels == null || !instrumentsLevels.Any() ? throw new ArgumentOutOfRangeException(nameof(_instrumentsLevels)) : instrumentsLevels;
+            _b2C2RestClient = b2C2RestClient ?? throw new NullReferenceException(nameof(b2C2RestClient));
+            _b2C2WebSocketClient = b2C2WebSocketClient ?? throw new NullReferenceException(nameof(b2C2RestClient));
+            _orderBookPublisher = orderBookPublisher ?? throw new NullReferenceException(nameof(orderBookPublisher));
+            _tickPricePublisher = tickPricePublisher ?? throw new NullReferenceException(nameof(tickPricePublisher));
+            _log = logFactory.CreateLog(this);
+
             _withWithoutSuffixMapping = new ConcurrentDictionary<string, string>();
             _withoutWithSuffixMapping = new ConcurrentDictionary<string, string>();
             _orderBooksCache = new ConcurrentDictionary<string, OrderBook>();
-            _b2C2RestClient = b2C2RestClient;
-            _b2C2WebSocketClient = b2C2WebSocketClient;
-            _orderBookPublisher = orderBookPublisher;
-            _tickPricePublisher = tickPricePublisher;
-            _log = logFactory.CreateLog(this);
         }
 
         public void Start()
@@ -117,7 +119,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             var instrument = _withWithoutSuffixMapping[message.Instrument];
             _orderBooksCache[instrument] = orderBook;
 
-            // Publish tock prices
+            // Publish tick prices
             var tickPrice = TickPrice.FromOrderBook(orderBook);
             await _tickPricePublisher.PublishAsync(tickPrice);
         }
