@@ -9,7 +9,7 @@ using Lykke.Service.B2c2Adapter.Settings;
 
 namespace Lykke.Service.B2c2Adapter.RabbitPublishers
 {
-    public class TickPricePublisher : ITickPricePublisher, IStartable, IStopable
+    public class TickPricePublisher : ITickPricePublisher, ITickPricePublisherRfq, IStartable, IStopable
     {
         private readonly ILogFactory _logFactory;
         private readonly PublishingSettings _settting;
@@ -25,6 +25,9 @@ namespace Lykke.Service.B2c2Adapter.RabbitPublishers
         {
             // NOTE: Read https://github.com/LykkeCity/Lykke.RabbitMqDotNetBroker/blob/master/README.md to learn
             // about RabbitMq subscriber configuration
+
+            if (!_settting.Enabled)
+                return;
 
             var settings = RabbitMqSubscriptionSettings
                 .ForPublisher(_settting.ConnectionString, _settting.ExchangeName);
@@ -48,6 +51,9 @@ namespace Lykke.Service.B2c2Adapter.RabbitPublishers
 
         public async Task PublishAsync(TickPrice message)
         {
+            if (!_settting.Enabled)
+                return;
+
             await _publisher.ProduceAsync(message);
         }
     }

@@ -1,6 +1,7 @@
 ﻿using Autofac;
 using Common;
 using Lykke.B2c2Client;
+using Lykke.B2c2Client.Settings;
 using Lykke.Service.B2c2Adapter.RabbitPublishers;
 using Lykke.Service.B2c2Adapter.Services;
 using Lykke.Service.B2c2Adapter.Settings;
@@ -22,16 +23,8 @@ namespace Lykke.Service.B2c2Adapter.Modules
         protected override void Load(ContainerBuilder builder)
         {
             // B2C2 Client Lybrary
-            builder.RegisterType<B2c2RestClient>()
-                .As<IB2c2RestClient>()
-                .SingleInstance()
-                .WithParameter("url", _settings.RestUrl)
-                .WithParameter("authorizationToken", _settings.AuthorizationToken);
-            builder.RegisterType<B2c2WebSocketClient>()
-                .As<IB2c2WebSocketClient>()
-                .SingleInstance()
-                .WithParameter("url", _settings.WebSocketUrl)
-                .WithParameter("authorizationToken", _settings.AuthorizationToken);
+            builder.RegisterB2С2RestClient(new B2C2ClientSettings(_settings.RestUrl, _settings.AuthorizationToken));
+            builder.RegisterB2С2WebSocketClient(new B2C2ClientSettings(_settings.WebSocketUrl, _settings.AuthorizationToken));
 
             // Publishers
             builder.RegisterType<OrderBookPublisher>()
@@ -46,13 +39,34 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .As<IStopable>()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.RabbitMq.TickPrices));
+            // RQF Publishers
+            builder.RegisterType<OrderBookPublisher>()
+                .As<IOrderBookPublisherRfq>()
+                .As<IStartable>()
+                .As<IStopable>()
+                .SingleInstance()
+                .WithParameter(TypedParameter.From(_settings.RabbitMq.OrderBooksRfq));
+            builder.RegisterType<TickPricePublisher>()
+                .As<ITickPricePublisherRfq>()
+                .As<IStartable>()
+                .As<IStopable>()
+                .SingleInstance()
+                .WithParameter(TypedParameter.From(_settings.RabbitMq.TickPricesRfq));
 
-            // B2C2 order books service
-            builder.RegisterType<B2c2OrderBooksService>()
+            // Order books service
+            builder.RegisterType<OrderBooksService>()
                 .AsSelf()
                 .As<IStartable>()
                 .SingleInstance()
-                .WithParameter("instrumentsLevels", _settings.InstrumentLevels);
+                .WithParameter(TypedParameter.From(_settings.InstrumentLevels));
+            // Order books service
+            builder.RegisterType<OrderBooksServiceRfq>()
+                .AsSelf()
+                .As<IStartable>()
+                .As<IStopable>()
+                .SingleInstance()
+                .WithParameter(TypedParameter.From(_settings.InstrumentLevels))
+                .WithParameter(TypedParameter.From(_settings.RfqOrderBooksSleepInterval));
         }
     }
 }

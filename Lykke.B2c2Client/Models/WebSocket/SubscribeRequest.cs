@@ -11,7 +11,7 @@ namespace Lykke.B2c2Client.Models.WebSocket
         public string Instrument { get; set; }
 
         [JsonProperty("levels")]
-        public int[] Levels { get; set; }
+        public decimal[] Levels { get; set; }
 
         [JsonProperty("tag")]
         public string Tag { get; set; }

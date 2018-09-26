@@ -19,15 +19,31 @@ namespace Lykke.B2c2Client.Models.Rest
         public Side Side { get; set; }
 
         [JsonProperty("price")]
-        public double Price { get; set; }
+        public decimal Price { get; set; }
 
         [JsonProperty("quantity")]
-        public double Quantity { get; set; }
+        public decimal Quantity { get; set; }
 
         [JsonProperty("order")]
         public string Order { get; set; }
 
         [JsonProperty("created")]
         public DateTime Created { get; set; }
+
+        public Trade()
+        {
+        }
+
+        public Trade(string tradeId, string rfqId, string instrument, Side side, double price, double quantity, string order, DateTime created)
+        {
+            TradeId = tradeId;
+            RfqId = rfqId;
+            Instrument = instrument;
+            Side = side;
+            Price = (decimal)price;
+            Quantity = (decimal)quantity;
+            Order = order;
+            Created = created;
+        }
     }
 }

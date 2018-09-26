@@ -15,11 +15,11 @@ namespace Lykke.B2c2Client.Models.Rest
         public Side Side { get; set; }
 
         [JsonProperty("price")]
-        public double Price { get; set; }
+        public decimal Price { get; set; }
 
         /// Quantity in base currency (maximum 4 decimals).
         [JsonProperty("quantity")]
-        public double Quantity { get; set; }
+        public decimal Quantity { get; set; }
 
         public TradeRequest()
         {

@@ -4,5 +4,7 @@
     {
         public PublishingSettings OrderBooks { get; set; }
         public PublishingSettings TickPrices { get; set; }
+        public PublishingSettings OrderBooksRfq { get; set; }
+        public PublishingSettings TickPricesRfq { get; set; }
     }
 }

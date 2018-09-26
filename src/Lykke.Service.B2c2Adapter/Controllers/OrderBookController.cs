@@ -12,11 +12,11 @@ namespace Lykke.Service.B2c2Adapter.Controllers
     [Route("/api/[controller]")]
     public sealed class OrderBookController : IOrderBookController
     {
-        private readonly B2c2OrderBooksService _b2C2OrderBooksService;
+        private readonly OrderBooksService _orderBooksService;
 
-        public OrderBookController(B2c2OrderBooksService b2C2OrderBooksService)
+        public OrderBookController(OrderBooksService orderBooksService)
         {
-            _b2C2OrderBooksService = b2C2OrderBooksService;
+            _orderBooksService = orderBooksService;
         }
 
         [SwaggerOperation("GetAllInstruments")]
@@ -24,28 +24,28 @@ namespace Lykke.Service.B2c2Adapter.Controllers
         [ProducesResponseType(typeof(IReadOnlyCollection<string>), (int)HttpStatusCode.OK)]
         public IReadOnlyCollection<string> GetAllInstruments()
         {
-            return _b2C2OrderBooksService.GetAllInstruments();
+            return _orderBooksService.GetAllInstruments();
         }
 
         [SwaggerOperation("GetAllTickPrices")]
         [HttpGet("GetAllTickPrices")]
         [ProducesResponseType(typeof(IReadOnlyCollection<TickPrice>), (int)HttpStatusCode.OK)]
-        public async Task<IReadOnlyCollection<TickPrice>> GetAllTickPrices()
+        public Task<IReadOnlyCollection<TickPrice>> GetAllTickPrices()
         {
-            return _b2C2OrderBooksService.GetAllTickPrices();
+            return Task.FromResult(_orderBooksService.GetAllTickPrices());
         }
 
         [SwaggerOperation("GetOrderBook")]
         [HttpGet("GetOrderBook")]
         [ProducesResponseType(typeof(OrderBook), (int)HttpStatusCode.OK)]
-        public async Task<OrderBook> GetOrderBook(string assetPair)
+        public Task<OrderBook> GetOrderBook(string assetPair)
         {
             if (string.IsNullOrWhiteSpace(assetPair))
                 return null;
 
-            var result = _b2C2OrderBooksService.GetOrderBook(assetPair.ToUpper());
+            var result = _orderBooksService.GetOrderBook(assetPair.ToUpper());
 
-            return result;
+            return Task.FromResult(result);
         }
     }
 }

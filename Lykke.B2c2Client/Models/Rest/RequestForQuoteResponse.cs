@@ -9,7 +9,7 @@ namespace Lykke.B2c2Client.Models.Rest
         [JsonProperty("rfq_id")]
         public string Id { get; set; }
 
-        /// A universally unique identifier that will be returned to you in the response.
+        /// A universally unique identifier that was set in request.
         [JsonProperty("client_rfq_id")]
         public string ClientRfqId { get; set; }
 
@@ -20,11 +20,11 @@ namespace Lykke.B2c2Client.Models.Rest
         public Side Side { get; set; }
 
         [JsonProperty("price")]
-        public double Price { get; set; }
+        public decimal Price { get; set; }
 
         /// Quantity in base currency (maximum 4 decimals).
         [JsonProperty("quantity")]
-        public double Quantity { get; set; }
+        public decimal Quantity { get; set; }
 
         // Present in documentation but absent in real data
         //[JsonProperty("created"), JsonConverter(typeof(IsoDateTimeConverter))]
@@ -32,5 +32,20 @@ namespace Lykke.B2c2Client.Models.Rest
 
         [JsonProperty("valid_until"), JsonConverter(typeof(IsoDateTimeConverter))]
         public DateTime ValidUntil { get; set; }
+
+        public RequestForQuoteResponse()
+        {
+        }
+
+        public RequestForQuoteResponse(string id, string clientRfqId, string instrument, Side side, double price, double quantity, DateTime validUntil)
+        {
+            Id = id;
+            ClientRfqId = clientRfqId;
+            Instrument = instrument;
+            Side = side;
+            Price = (decimal)price;
+            Quantity = (decimal)quantity;
+            ValidUntil = validUntil;
+        }
     }
 }

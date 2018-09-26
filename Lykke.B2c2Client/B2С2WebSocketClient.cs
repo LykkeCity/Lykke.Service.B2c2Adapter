@@ -11,13 +11,14 @@ using Common;
 using Common.Log;
 using Lykke.B2c2Client.Exceptions;
 using Lykke.B2c2Client.Models.WebSocket;
+using Lykke.B2c2Client.Settings;
 using Lykke.Common.Log;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Lykke.B2c2Client
 {
-    public class B2c2WebSocketClient : IB2c2WebSocketClient
+    public class B2С2WebSocketClient : IB2С2WebSocketClient
     {
         private readonly TimeSpan _timeOut = new TimeSpan(0, 0, 0, 30);
         private readonly string _baseUri;
@@ -27,7 +28,7 @@ namespace Lykke.B2c2Client
         private readonly object _sync = new object();
         private readonly ConcurrentDictionary<string, Subscription> _awaitingSubscriptions;
         private readonly ConcurrentDictionary<string, Func<PriceMessage, Task>> _instrumentsHandlers;
-        private readonly ConcurrentDictionary<string, int[]> _instrumentsLevels;
+        private readonly ConcurrentDictionary<string, decimal[]> _instrumentsLevels;
         private readonly ConcurrentDictionary<string, Subscription> _awaitingUnsubscriptions;
         private readonly IList<string> _tradableInstruments;
         private readonly CancellationTokenSource _cancellationTokenSource;
@@ -53,8 +54,11 @@ namespace Lykke.B2c2Client
             }
         }
 
-        public B2c2WebSocketClient(string url, string authorizationToken, ILogFactory logFactory)
+        public B2С2WebSocketClient(B2C2ClientSettings settings, ILogFactory logFactory)
         {
+            if (settings == null) throw new NullReferenceException(nameof(settings));
+            var url = settings.Url;
+            var authorizationToken = settings.AuthorizationToken;
             if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out _))
                 throw new ArgumentOutOfRangeException(nameof(url));
             if (string.IsNullOrWhiteSpace(authorizationToken)) throw new ArgumentOutOfRangeException(nameof(authorizationToken));
@@ -66,15 +70,15 @@ namespace Lykke.B2c2Client
             _clientWebSocket = new ClientWebSocket();
             _awaitingSubscriptions = new ConcurrentDictionary<string, Subscription>();
             _instrumentsHandlers = new ConcurrentDictionary<string, Func<PriceMessage, Task>>();
-            _instrumentsLevels = new ConcurrentDictionary<string, int[]>();
+            _instrumentsLevels = new ConcurrentDictionary<string, decimal[]>();
             _awaitingUnsubscriptions = new ConcurrentDictionary<string, Subscription>();
             _tradableInstruments = new List<string>();
             _cancellationTokenSource = new CancellationTokenSource();
-            _trigger = new TimerTrigger(nameof(B2c2WebSocketClient), new TimeSpan(0, 1, 0), logFactory, ReconnectIfNeeded);
+            _trigger = new TimerTrigger(nameof(B2С2WebSocketClient), new TimeSpan(0, 1, 0), logFactory, ReconnectIfNeeded);
             _trigger.Start();
         }
 
-        public async Task SubscribeAsync(string instrument, int[] levels, Func<PriceMessage, Task> handler,
+        public async Task SubscribeAsync(string instrument, decimal[] levels, Func<PriceMessage, Task> handler,
             CancellationToken ct = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(instrument)) throw new ArgumentOutOfRangeException(nameof(instrument));
@@ -84,7 +88,7 @@ namespace Lykke.B2c2Client
             await SubscribeAsync(instrument, levels, handler, ct, false);
         }
 
-        private async Task SubscribeAsync(string instrument, int[] levels, Func<PriceMessage, Task> handler,
+        private async Task SubscribeAsync(string instrument, decimal[] levels, Func<PriceMessage, Task> handler,
             CancellationToken ct = default(CancellationToken), bool isReconnecting = false)
         {
             if (string.IsNullOrWhiteSpace(instrument)) throw new ArgumentOutOfRangeException(nameof(instrument));
@@ -461,7 +465,7 @@ namespace Lykke.B2c2Client
             GC.SuppressFinalize(this);
         }
 
-        ~B2c2WebSocketClient()
+        ~B2С2WebSocketClient()
         {
             Dispose(false);
         }

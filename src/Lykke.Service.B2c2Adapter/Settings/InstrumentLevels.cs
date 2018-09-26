@@ -4,6 +4,6 @@
     {
         public string Instrument { get; set; }
 
-        public int[] Levels { get; set; } = new int[0];
+        public decimal[] Levels { get; set; } = new decimal[0];
     }
 }

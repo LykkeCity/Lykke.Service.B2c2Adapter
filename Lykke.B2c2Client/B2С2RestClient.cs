@@ -7,18 +7,22 @@ using System.Threading.Tasks;
 using Common.Log;
 using Lykke.B2c2Client.Exceptions;
 using Lykke.B2c2Client.Models.Rest;
+using Lykke.B2c2Client.Settings;
 using Lykke.Common.Log;
 using Newtonsoft.Json;
 
 namespace Lykke.B2c2Client
 {
-    public class B2c2RestClient : IB2c2RestClient
+    public class B2С2RestClient : IB2С2RestClient
     {
         private readonly ILog _log;
         private readonly HttpClient _client;
 
-        public B2c2RestClient(string url, string authorizationToken, ILogFactory logFactory)
+        public B2С2RestClient(B2C2ClientSettings settings, ILogFactory logFactory)
         {
+            if (settings == null) throw new NullReferenceException(nameof(settings));
+            var url = settings.Url;
+            var authorizationToken = settings.AuthorizationToken;
             if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
                 throw new ArgumentOutOfRangeException(nameof(url));
             if (string.IsNullOrWhiteSpace(authorizationToken)) throw new ArgumentOutOfRangeException(nameof(authorizationToken));

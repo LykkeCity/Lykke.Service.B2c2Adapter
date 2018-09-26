@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Lykke.B2c2Client.Models.Rest;
 
 namespace Lykke.B2c2Client
 {
-    public interface IB2c2RestClient
+    public interface IB2С2RestClient
     {
         Task<IReadOnlyDictionary<string, decimal>> BalanceAsync(CancellationToken ct = default(CancellationToken));
 

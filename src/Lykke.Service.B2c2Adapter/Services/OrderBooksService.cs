@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Autofac;
+using Autofac.Features.AttributeFilters;
 using Common.Log;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Exceptions;
@@ -15,7 +16,7 @@ using Lykke.Service.B2c2Adapter.Settings;
 
 namespace Lykke.Service.B2c2Adapter.Services
 {
-    public sealed class B2c2OrderBooksService : IStartable
+    public sealed class OrderBooksService : IStartable
     {
         private const string Source = "b2c2";
         private readonly IReadOnlyCollection<InstrumentLevels> _instrumentsLevels;
@@ -23,16 +24,19 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly ConcurrentDictionary<string, string> _withoutWithSuffixMapping;
         private readonly ConcurrentDictionary<string, PriceMessage> _priceMessagesCache;
         private readonly ConcurrentDictionary<string, OrderBook> _orderBooksCache;
-        private readonly IB2c2RestClient _b2c2RestClient;
-        private readonly IB2c2WebSocketClient _b2C2WebSocketClient;
+        private readonly IB2С2RestClient _b2c2RestClient;
+        private readonly IB2С2WebSocketClient _b2C2WebSocketClient;
         private readonly IOrderBookPublisher _orderBookPublisher;
         private readonly ITickPricePublisher _tickPricePublisher;
         private readonly ILog _log;
         private const string Suffix = ".SPOT";
 
-        public B2c2OrderBooksService(IReadOnlyCollection<InstrumentLevels> instrumentsLevels, 
-            IB2c2RestClient b2C2RestClient, IB2c2WebSocketClient b2C2WebSocketClient,
-            IOrderBookPublisher orderBookPublisher, ITickPricePublisher tickPricePublisher,
+        public OrderBooksService(
+            IReadOnlyCollection<InstrumentLevels> instrumentsLevels, 
+            IB2С2RestClient b2C2RestClient,
+            IB2С2WebSocketClient b2C2WebSocketClient,
+            IOrderBookPublisher orderBookPublisher,
+            ITickPricePublisher tickPricePublisher,
             ILogFactory logFactory)
         {
             _instrumentsLevels = instrumentsLevels;
