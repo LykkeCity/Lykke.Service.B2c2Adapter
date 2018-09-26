@@ -1,4 +1,5 @@
 ﻿using Lykke.B2c2Client;
+using Lykke.B2c2Client.Settings;
 using Lykke.Logs;
 using Xunit;
 
@@ -12,7 +13,7 @@ namespace Lykke.Service.B2c2Adapter.Tests
         [Fact]
         public async void BalanceTest()
         {
-            var restClient = new B2С2RestClient(Url, Token, LogFactory.Create());
+            var restClient = new B2С2RestClient(new B2C2ClientSettings(Url, Token), LogFactory.Create());
 
             var result = await restClient.BalanceAsync();
             
@@ -23,7 +24,7 @@ namespace Lykke.Service.B2c2Adapter.Tests
         [Fact]
         public async void InstrumentsTest()
         {
-            var restClient = new B2С2RestClient(Url, Token, LogFactory.Create());
+            var restClient = new B2С2RestClient(new B2C2ClientSettings(Url, Token), LogFactory.Create());
 
             var result = await restClient.BalanceAsync();
 
