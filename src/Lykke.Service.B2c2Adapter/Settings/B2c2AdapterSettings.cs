@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using JetBrains.Annotations;
 
 namespace Lykke.Service.B2c2Adapter.Settings
@@ -14,10 +13,6 @@ namespace Lykke.Service.B2c2Adapter.Settings
         public string AuthorizationToken { get; set; }
 
         public IReadOnlyList<InstrumentLevels> InstrumentLevels { get; set; } = new List<InstrumentLevels>();
-
-        public TimeSpan RfqOrderBooksSleepInterval { get; set; }
-
-        public int RfqRequestsSleepIntervalInMs { get; set; }
 
         public DbSettings Db { get; set; }
 
