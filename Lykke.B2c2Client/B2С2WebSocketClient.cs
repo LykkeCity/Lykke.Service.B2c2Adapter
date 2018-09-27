@@ -309,7 +309,10 @@ namespace Lykke.B2c2Client
             if (jToken["success"]?.Value<bool>() == false)
             {
                 var errorResponse = jToken.ToObject<SubscribeErrorResponse>();
-                if (errorResponse.Code != 3013) // not able to quote at the moment
+
+                if (errorResponse.Code == 3013) // not able to quote at the moment
+                    _log.Info($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}");
+                else
                     _log.Warning($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}");
 
                 return;
