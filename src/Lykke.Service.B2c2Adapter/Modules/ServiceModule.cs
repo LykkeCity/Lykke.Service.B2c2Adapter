@@ -59,14 +59,15 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .As<IStartable>()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.InstrumentLevels));
-            // Order books service
+            // RFQ order books service
             builder.RegisterType<OrderBooksServiceRfq>()
                 .AsSelf()
                 .As<IStartable>()
                 .As<IStopable>()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.InstrumentLevels))
-                .WithParameter(TypedParameter.From(_settings.RfqOrderBooksSleepInterval));
+                .WithParameter(TypedParameter.From(_settings.RfqOrderBooksSleepInterval))
+                .WithParameter(TypedParameter.From(_settings.RfqRequestsSleepInterval));
         }
     }
 }
