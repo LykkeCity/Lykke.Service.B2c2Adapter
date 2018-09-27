@@ -9,7 +9,7 @@ using Lykke.Service.B2c2Adapter.Settings;
 
 namespace Lykke.Service.B2c2Adapter.RabbitPublishers
 {
-    public class TickPricePublisher : ITickPricePublisher, ITickPricePublisherRfq, IStartable, IStopable
+    public class TickPricePublisher : ITickPricePublisher, IStartable, IStopable
     {
         private readonly ILogFactory _logFactory;
         private readonly PublishingSettings _settting;

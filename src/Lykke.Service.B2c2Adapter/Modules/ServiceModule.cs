@@ -1,5 +1,6 @@
 ﻿using Autofac;
 using Common;
+using JetBrains.Annotations;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Settings;
 using Lykke.Service.B2c2Adapter.RabbitPublishers;
@@ -9,6 +10,7 @@ using Lykke.SettingsReader;
 
 namespace Lykke.Service.B2c2Adapter.Modules
 {
+    [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
     public class ServiceModule : Module
     {
         private readonly IReloadingManager<AppSettings> _appSettings;
@@ -39,19 +41,6 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .As<IStopable>()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.RabbitMq.TickPrices));
-            // RQF Publishers
-            builder.RegisterType<OrderBookPublisher>()
-                .As<IOrderBookPublisherRfq>()
-                .As<IStartable>()
-                .As<IStopable>()
-                .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.RabbitMq.OrderBooksRfq));
-            builder.RegisterType<TickPricePublisher>()
-                .As<ITickPricePublisherRfq>()
-                .As<IStartable>()
-                .As<IStopable>()
-                .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.RabbitMq.TickPricesRfq));
 
             // Order books service
             builder.RegisterType<OrderBooksService>()
@@ -59,15 +48,6 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .As<IStartable>()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.InstrumentLevels));
-            // RFQ order books service
-            builder.RegisterType<OrderBooksServiceRfq>()
-                .AsSelf()
-                .As<IStartable>()
-                .As<IStopable>()
-                .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.InstrumentLevels))
-                .WithParameter(TypedParameter.From(_settings.RfqOrderBooksSleepInterval))
-                .WithParameter(TypedParameter.From(_settings.RfqRequestsSleepIntervalInMs));
         }
     }
 }
