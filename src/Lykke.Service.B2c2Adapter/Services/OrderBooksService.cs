@@ -112,12 +112,12 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private async Task HandleAsync(PriceMessage message)
         {
-            // Publish order books
             var orderBook = Convert(message);
-            await _orderBookPublisher.PublishAsync(orderBook);
-
             var instrument = _withWithoutSuffixMapping[message.Instrument];
             _orderBooksCache[instrument] = orderBook;
+
+            // Publish order books
+            await _orderBookPublisher.PublishAsync(orderBook);
 
             // Publish tick prices
             var tickPrice = TickPrice.FromOrderBook(orderBook);
