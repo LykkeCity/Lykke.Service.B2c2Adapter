@@ -17,8 +17,8 @@ B2c2AdapterService:
     RfqOrderBooksSleepInterval:
         settings-key: B2C2AdapterService-RfqOrderBooksSleepInterval
 
-    RfqRequestsSleepInterval:
-        settings-key: B2C2AdapterService-RfqRequestsSleepInterval
+    RfqRequestsSleepIntervalInMs:
+        settings-key: B2C2AdapterService-RfqRequestsSleepIntervalInMs
 
     Db:
         LogsConnString:

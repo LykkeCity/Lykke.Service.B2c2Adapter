@@ -67,7 +67,7 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.InstrumentLevels))
                 .WithParameter(TypedParameter.From(_settings.RfqOrderBooksSleepInterval))
-                .WithParameter(TypedParameter.From(_settings.RfqRequestsSleepInterval));
+                .WithParameter(TypedParameter.From(_settings.RfqRequestsSleepIntervalInMs));
         }
     }
 }

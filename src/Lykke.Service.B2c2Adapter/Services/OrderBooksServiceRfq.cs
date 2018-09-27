@@ -18,7 +18,7 @@ namespace Lykke.Service.B2c2Adapter.Services
     public class OrderBooksServiceRfq: IStartable, IStopable
     {
         private const string Source = "b2c2";
-        private readonly TimeSpan _rfqRequestsSleepInterval;
+        private readonly int _rfqRequestsSleepInterval;
         private readonly IReadOnlyList<InstrumentLevels> _instrumentsLevels;
         private readonly TimerTrigger _trigger;
         private readonly IB2С2RestClient _b2C2RestClient;
@@ -29,7 +29,7 @@ namespace Lykke.Service.B2c2Adapter.Services
         public OrderBooksServiceRfq(
             IReadOnlyList<InstrumentLevels> instrumentsLevels,
             TimeSpan sleepInterval,
-            TimeSpan rfqRequestsSleepInterval,
+            int rfqRequestsSleepInterval,
             IB2С2RestClient b2C2RestClient,
             IOrderBookPublisherRfq orderBookPublisherRfq,
             ITickPricePublisherRfq tickPricePublisherRfq,
