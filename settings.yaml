@@ -14,6 +14,9 @@ B2c2AdapterService:
         types: 
             - JsonArray
 
+    PublishFromCacheInterval:
+        settings-key: B2C2AdapterService-PublishFromCacheInterval
+
     Db:
         LogsConnString:
             settings-key: B2C2AdapterService-LogsConnectionString

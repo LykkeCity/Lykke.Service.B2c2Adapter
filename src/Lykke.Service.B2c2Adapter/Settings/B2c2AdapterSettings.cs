@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using JetBrains.Annotations;
 
 namespace Lykke.Service.B2c2Adapter.Settings
@@ -13,6 +14,8 @@ namespace Lykke.Service.B2c2Adapter.Settings
         public string AuthorizationToken { get; set; }
 
         public IReadOnlyList<InstrumentLevels> InstrumentLevels { get; set; } = new List<InstrumentLevels>();
+
+        public TimeSpan PublishFromCacheInterval { get; set; }
 
         public DbSettings Db { get; set; }
 

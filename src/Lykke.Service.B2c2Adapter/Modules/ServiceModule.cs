@@ -46,8 +46,10 @@ namespace Lykke.Service.B2c2Adapter.Modules
             builder.RegisterType<OrderBooksService>()
                 .AsSelf()
                 .As<IStartable>()
+                .As<IStopable>()
                 .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.InstrumentLevels));
+                .WithParameter(TypedParameter.From(_settings.InstrumentLevels))
+                .WithParameter(TypedParameter.From(_settings.PublishFromCacheInterval));
         }
     }
 }
