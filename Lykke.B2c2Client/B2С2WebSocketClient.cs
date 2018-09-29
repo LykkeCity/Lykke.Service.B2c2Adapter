@@ -21,6 +21,7 @@ namespace Lykke.B2c2Client
     public class B2С2WebSocketClient : IB2С2WebSocketClient
     {
         private readonly TimeSpan _timeOut = new TimeSpan(0, 0, 0, 30);
+        private readonly TimeSpan _priceEventsTimeOut = new TimeSpan(0, 3, 0);
         private readonly string _baseUri;
         private readonly string _authorizationToken;
         private readonly ILog _log;
@@ -384,7 +385,7 @@ namespace Lykke.B2c2Client
                     return;
 
                 if (_clientWebSocket.State != WebSocketState.Open
-                    || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnyPriceMessageFor(new TimeSpan(0, 3, 0)))
+                    || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnyPriceMessageFor(_priceEventsTimeOut))
                 {
                     _clientWebSocket.Dispose();
                     _clientWebSocket = new ClientWebSocket();
