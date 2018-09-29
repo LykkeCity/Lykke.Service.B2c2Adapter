@@ -52,7 +52,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             _orderBookPublisher = orderBookPublisher ?? throw new NullReferenceException(nameof(orderBookPublisher));
             _tickPricePublisher = tickPricePublisher ?? throw new NullReferenceException(nameof(tickPricePublisher));
             _log = logFactory.CreateLog(this);
-            _trigger = new TimerTrigger(nameof(B2С2WebSocketClient), publishFromCacheInterval, logFactory, PublishAllFromCache);
+            _trigger = new TimerTrigger(nameof(OrderBooksService), publishFromCacheInterval, logFactory, PublishAllFromCache);
             _trigger.Start();
         }
 

@@ -384,7 +384,7 @@ namespace Lykke.B2c2Client
                     return;
 
                 if (_clientWebSocket.State != WebSocketState.Open
-                    || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnyPriceMessageFor(new TimeSpan(0, 1, 0)))
+                    || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnyPriceMessageFor(new TimeSpan(0, 2, 0)))
                 {
                     _clientWebSocket.Dispose();
                     _clientWebSocket = new ClientWebSocket();
