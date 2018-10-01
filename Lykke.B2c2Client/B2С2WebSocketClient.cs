@@ -376,19 +376,32 @@ namespace Lykke.B2c2Client
 
         private async Task ReconnectIfNeeded(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
         {
+            _log.Info("ReconnectIfNeeded started.");
+
             try
             {
                 if (_instrumentsHandlers.Count == 0 && _awaitingSubscriptions.Count == 0)
+                {
+                    _log.Info($"No handlers or awaiting subscriptions, instruments handlers: {_instrumentsHandlers.Count}," +
+                              $"awaiting subscriptions: {_awaitingSubscriptions.Count}.");
                     return;
+                }
 
                 if (Timestamp == default(DateTime))
+                {
+                    _log.Info("There was no any price message.");
                     return;
+                }
+
+                _log.Info($"State: {_clientWebSocket.State}, HasNotReceivedAnyPriceMessage: {HasNotReceivedAnyPriceMessageFor(_priceEventsTimeOut)}.");
 
                 if (_clientWebSocket.State != WebSocketState.Open
                     || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnyPriceMessageFor(_priceEventsTimeOut))
                 {
                     _clientWebSocket.Dispose();
                     _clientWebSocket = new ClientWebSocket();
+
+                    _log.Info($"Resubscribing for {_instrumentsHandlers.Count} handlers...");
 
                     foreach (var instrument in _instrumentsHandlers.Keys)
                     {
