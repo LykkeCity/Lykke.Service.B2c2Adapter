@@ -305,7 +305,7 @@ namespace Lykke.B2c2Client
 
         private void HandlePriceMessage(JToken jToken)
         {
-            _log.Info($"Received a price message, success: {jToken["success"]?.Value<bool>()}, {DateTime.UtcNow}. {jToken}");
+            _log.Info($"Received a price message, success: {jToken["success"]?.Value<bool>()}, instrument: {jToken["instrument"]?.Value<string>()}, {DateTime.UtcNow}.");
             LastPriceMessageTimestamp = DateTime.UtcNow;
 
             if (jToken["success"]?.Value<bool>() == false)
