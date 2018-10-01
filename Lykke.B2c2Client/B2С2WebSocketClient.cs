@@ -328,9 +328,9 @@ namespace Lykke.B2c2Client
                 {
                     handler(result).GetAwaiter().GetResult();
                 }
-                catch
+                catch (Exception e)
                 {
-                    // Don't care if handler fails
+                    _log.Error(e, "Handler (OrderBooksService) failed.");
                 }
             }
         }
