@@ -75,7 +75,7 @@ namespace Lykke.B2c2Client
             _awaitingUnsubscriptions = new ConcurrentDictionary<string, Subscription>();
             _tradableInstruments = new List<string>();
             _cancellationTokenSource = new CancellationTokenSource();
-            _trigger = new TimerTrigger(nameof(B2С2WebSocketClient), new TimeSpan(0, 0, 1, 0), logFactory, ReconnectIfNeeded);
+            _trigger = new TimerTrigger(nameof(B2С2WebSocketClient), new TimeSpan(0, 1, 0), logFactory, ReconnectIfNeeded);
             _trigger.Start();
         }
 
@@ -305,6 +305,7 @@ namespace Lykke.B2c2Client
 
         private void HandlePriceMessage(JToken jToken)
         {
+            _log.Info($"Received a price message, success: {jToken["success"]?.Value<bool>()}, instrument: {jToken["instrument"]?.Value<string>()}, {DateTime.UtcNow}.");
             LastPriceMessageTimestamp = DateTime.UtcNow;
 
             if (jToken["success"]?.Value<bool>() == false)
@@ -382,20 +383,20 @@ namespace Lykke.B2c2Client
             {
                 if (_instrumentsHandlers.Count == 0 && _awaitingSubscriptions.Count == 0)
                 {
-                    _log.Info($"No handlers or awaiting subscriptions. Instruments handlers: {_instrumentsHandlers.Count}, " +
+                    _log.Info($"No handlers or awaiting subscriptions. Instruments handlers: {_instrumentsHandlers.Count}," +
                               $"awaiting subscriptions: {_awaitingSubscriptions.Count}.");
                     return;
                 }
 
                 if (LastPriceMessageTimestamp == default(DateTime))
                 {
-                    _log.Info("There was no any price messages.");
+                    _log.Info("There was no any price message.");
                     return;
                 }
 
                 _log.Info($"State: {_clientWebSocket.State}, has not received any price message for 3 minutes:" +
-                          $"{HasNotReceivedAnyPriceMessageForSomeTime()}. " +
-                          $"priceEventsTimeOut: {_priceEventsTimeOut.TotalSeconds} seconds. " +
+                          $"{HasNotReceivedAnyPriceMessageForSomeTime()}." +
+                          $"priceEventsTimeOut: {_priceEventsTimeOut.TotalSeconds} seconds." +
                           $"LastPriceMessageTimestamp: {LastPriceMessageTimestamp}.");
 
                 if (_clientWebSocket.State != WebSocketState.Open
