@@ -54,8 +54,6 @@ namespace Lykke.Service.B2c2Adapter.RabbitPublishers
 
         public async Task PublishAsync(OrderBook message)
         {
-            _log.Info($"OrderBookPublisher.PublishAsync(). _publisher = {_publisher}, _settting.Enabled = {_settting.Enabled}.");
-
             if (_publisher == null || !_settting.Enabled)
                 return;
 
