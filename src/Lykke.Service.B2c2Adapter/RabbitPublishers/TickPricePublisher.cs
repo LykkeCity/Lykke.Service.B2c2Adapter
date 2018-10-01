@@ -11,14 +11,14 @@ namespace Lykke.Service.B2c2Adapter.RabbitPublishers
 {
     public class TickPricePublisher : ITickPricePublisher, IStartable, IStopable
     {
-        private readonly ILogFactory _logFactory;
         private readonly PublishingSettings _settting;
         private RabbitMqPublisher<TickPrice> _publisher;
+        private readonly ILogFactory _logFactory;
 
         public TickPricePublisher(ILogFactory logFactory, PublishingSettings settting)
-        {
-            _logFactory = logFactory;
+        {            
             _settting = settting;
+            _logFactory = logFactory;
         }
 
         public void Start()

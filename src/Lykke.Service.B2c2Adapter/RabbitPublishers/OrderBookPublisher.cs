@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Autofac;
 using Common;
+using Common.Log;
 using Lykke.Common.ExchangeAdapter.Contracts;
 using Lykke.Common.Log;
 using Lykke.RabbitMqBroker.Publisher;
@@ -11,14 +12,16 @@ namespace Lykke.Service.B2c2Adapter.RabbitPublishers
 {
     public class OrderBookPublisher : IOrderBookPublisher, IStartable, IStopable
     {
-        private readonly ILogFactory _logFactory;
         private readonly PublishingSettings _settting;
         private RabbitMqPublisher<OrderBook> _publisher;
+        private readonly ILogFactory _logFactory;
+        private readonly ILog _log;
 
-        public OrderBookPublisher(ILogFactory logFactory, PublishingSettings settting)
+        public OrderBookPublisher(PublishingSettings settting, ILogFactory logFactory, ILog log)
         {
-            _logFactory = logFactory;
             _settting = settting;
+            _logFactory = logFactory;
+            _log = log;
         }
 
         public void Start()
@@ -51,6 +54,8 @@ namespace Lykke.Service.B2c2Adapter.RabbitPublishers
 
         public async Task PublishAsync(OrderBook message)
         {
+            _log.Info($"OrderBookPublisher.PublishAsync(). _publisher = {_publisher}, _settting.Enabled = {_settting.Enabled}.");
+
             if (_publisher == null || !_settting.Enabled)
                 return;
 
