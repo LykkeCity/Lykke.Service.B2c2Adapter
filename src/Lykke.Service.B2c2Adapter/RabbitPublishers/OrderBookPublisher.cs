@@ -17,11 +17,11 @@ namespace Lykke.Service.B2c2Adapter.RabbitPublishers
         private readonly ILogFactory _logFactory;
         private readonly ILog _log;
 
-        public OrderBookPublisher(PublishingSettings settting, ILogFactory logFactory, ILog log)
+        public OrderBookPublisher(PublishingSettings settting, ILogFactory logFactory)
         {
             _settting = settting;
             _logFactory = logFactory;
-            _log = log;
+            _log = logFactory.CreateLog(this);
         }
 
         public void Start()
