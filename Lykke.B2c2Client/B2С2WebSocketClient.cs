@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using Lykke.B2c2Client.Converters;
 using Lykke.B2c2Client.Exceptions;
 using Lykke.B2c2Client.Models.WebSocket;
 using Lykke.B2c2Client.Settings;
@@ -305,8 +306,10 @@ namespace Lykke.B2c2Client
 
         private void HandlePriceMessage(JToken jToken)
         {
-            _log.Info($"Received a price message, success: {jToken["success"]?.Value<bool>()}, instrument: {jToken["instrument"]?.Value<string>()}, {DateTime.UtcNow}.");
             LastPriceMessageTimestamp = DateTime.UtcNow;
+
+            var timestamp = jToken["timestamp"].ToString(Formatting.None, new UnixDateTimeConverterFromMilliseconds());
+            _log.Info($"Success: {jToken["success"]?.Value<bool>()}, Timestamp: {timestamp}.");
 
             if (jToken["success"]?.Value<bool>() == false)
             {
@@ -377,8 +380,6 @@ namespace Lykke.B2c2Client
 
         private async Task ReconnectIfNeeded(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
         {
-            _log.Info("ReconnectIfNeeded started.");
-
             try
             {
                 if (_instrumentsHandlers.Count == 0 && _awaitingSubscriptions.Count == 0)
@@ -390,17 +391,17 @@ namespace Lykke.B2c2Client
 
                 if (LastPriceMessageTimestamp == default(DateTime))
                 {
-                    _log.Info("There was no any price message.");
+                    _log.Info("There was no any price messages yet.");
                     return;
                 }
 
                 _log.Info($"State: {_clientWebSocket.State}, has not received any price message for 3 minutes:" +
-                          $"{HasNotReceivedAnyPriceMessageForSomeTime()}." +
+                          $"{HasNotReceivedAnyPriceMessageFor(_priceEventsTimeOut)}." +
                           $"priceEventsTimeOut: {_priceEventsTimeOut.TotalSeconds} seconds." +
                           $"LastPriceMessageTimestamp: {LastPriceMessageTimestamp}.");
 
                 if (_clientWebSocket.State != WebSocketState.Open
-                    || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnyPriceMessageForSomeTime())
+                    || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnyPriceMessageFor(_priceEventsTimeOut))
                 {
                     _clientWebSocket.Dispose();
                     _clientWebSocket = new ClientWebSocket();
@@ -422,9 +423,9 @@ namespace Lykke.B2c2Client
             }
         }
 
-        private bool HasNotReceivedAnyPriceMessageForSomeTime()
+        private bool HasNotReceivedAnyPriceMessageFor(TimeSpan period)
         {
-            return DateTime.UtcNow - LastPriceMessageTimestamp > _priceEventsTimeOut;
+            return DateTime.UtcNow - LastPriceMessageTimestamp > period;
         }
 
         private bool IsSubscriptionInProgress(string instrument)
