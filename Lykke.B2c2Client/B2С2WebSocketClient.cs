@@ -36,6 +36,26 @@ namespace Lykke.B2c2Client
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly TimerTrigger _trigger;
 
+        private readonly object _lockIsReconnecting = new object();
+        private bool _isReconnecting;
+        private bool IsReconnecting
+        {
+            get
+            {
+                lock (_lockIsReconnecting)
+                {
+                    return _isReconnecting;
+                }
+            }
+            set
+            {
+                lock (_lockIsReconnecting)
+                {
+                    _isReconnecting = value;
+                }
+            }
+        }
+
         private readonly object _lockTimestamp = new object();
         private DateTime _lastPriceMessageTimestamp;
         private DateTime LastPriceMessageTimestamp
@@ -80,24 +100,10 @@ namespace Lykke.B2c2Client
             _trigger.Start();
         }
 
-        public async Task SubscribeAsync(string instrument, decimal[] levels, Func<PriceMessage, Task> handler,
+        public Task SubscribeAsync(string instrument, decimal[] levels, Func<PriceMessage, Task> handler,
             CancellationToken ct = default(CancellationToken))
         {
-            if (string.IsNullOrWhiteSpace(instrument)) throw new ArgumentOutOfRangeException(nameof(instrument));
-            if (levels.Length < 1 || levels.Length > 2) throw new ArgumentOutOfRangeException($"{nameof(levels)}. Minimum levels - 1, maximum - 2.");
-            if (handler == null) throw new NullReferenceException(nameof(handler));
-
-            await SubscribeAsync(instrument, levels, handler, ct, false);
-        }
-
-        private async Task SubscribeAsync(string instrument, decimal[] levels, Func<PriceMessage, Task> handler,
-            CancellationToken ct = default(CancellationToken), bool isReconnecting = false)
-        {
-            if (string.IsNullOrWhiteSpace(instrument)) throw new ArgumentOutOfRangeException(nameof(instrument));
-            if (levels.Length < 1 || levels.Length > 2) throw new ArgumentOutOfRangeException($"{nameof(levels)}. Minimum levels - 1, maximum - 2.");
-            if (handler == null) throw new NullReferenceException(nameof(handler));
-
-            ThrowIfSubscriptionIsAlreadyExist(instrument, isReconnecting);
+            ThrowIfSubscriptionIsAlreadyExist(instrument);
 
             ConnectIfNeeded(ct);
 
@@ -106,7 +112,7 @@ namespace Lykke.B2c2Client
             _log.Info($"Attempt to subscribe to order book updates, instrument: '{instrument}'.", tag);
 
             var subscribeRequest = new SubscribeRequest { Instrument = instrument, Levels = levels, Tag = tag };
-            await SendMessageToWebSocket(subscribeRequest, ct);
+            SendMessageToWebSocket(subscribeRequest, ct).GetAwaiter().GetResult();
 
             // Save subscription state
             var taskCompletionSource = new TaskCompletionSource<int>();
@@ -121,7 +127,7 @@ namespace Lykke.B2c2Client
             Task.Run(async () =>
             {
                 await Task.Delay(_timeOut, ct);
-                if (!ct.IsCancellationRequested)
+                if (!ct.IsCancellationRequested && _awaitingSubscriptions.ContainsKey(instrument))
                 {
                     lock (_sync)
                     {
@@ -131,9 +137,11 @@ namespace Lykke.B2c2Client
                 }
             }, ct);
             #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+            return taskCompletionSource.Task;
         }
 
-        public async Task UnsubscribeAsync(string instrument, CancellationToken ct = default(CancellationToken))
+        public Task UnsubscribeAsync(string instrument, CancellationToken ct = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(instrument)) throw new NullReferenceException(nameof(instrument));
 
@@ -144,7 +152,7 @@ namespace Lykke.B2c2Client
             ThrowIfSubscriptionDeosNotExistOrUnsubscriptionAlreadyExists(instrument);
 
             var unsubscribeRequest = new UnsubscribeRequest { Instrument = instrument, Tag = tag };
-            await SendMessageToWebSocket(unsubscribeRequest, ct);
+            SendMessageToWebSocket(unsubscribeRequest, ct).GetAwaiter().GetResult();
 
             // Save unsubscription state
             var taskCompletionSource = new TaskCompletionSource<int>();
@@ -168,6 +176,8 @@ namespace Lykke.B2c2Client
                 }
             }, ct);
             #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+            return taskCompletionSource.Task;
         }
 
         private void Connect(CancellationToken ct = default(CancellationToken))
@@ -297,10 +307,12 @@ namespace Lykke.B2c2Client
 
                 _awaitingSubscriptions.Remove(instrument, out var subscription);
                 
-                if (_instrumentsHandlers.ContainsKey(instrument))
+                if (_instrumentsHandlers.ContainsKey(instrument) && !IsReconnecting)
                     subscription.TaskCompletionSource.TrySetException(new B2c2WebSocketException($"Attempt to second subscription to {instrument}."));
 
                 _instrumentsHandlers[instrument] = subscription.Function;
+
+                subscription.TaskCompletionSource.SetResult(0);
             }
         }
 
@@ -308,17 +320,19 @@ namespace Lykke.B2c2Client
         {
             LastPriceMessageTimestamp = DateTime.UtcNow;
 
-            var timestamp = jToken["timestamp"].ToString(Formatting.None, new UnixDateTimeConverterFromMilliseconds());
+            var timestampStr = jToken["timestamp"].Value<string>();
+            var timestamp = UnixDateTimeFromMillisecondsConverter.Convert(timestampStr);
             _log.Info($"Success: {jToken["success"]?.Value<bool>()}, Timestamp: {timestamp}.");
 
             if (jToken["success"]?.Value<bool>() == false)
             {
                 var errorResponse = jToken.ToObject<SubscribeErrorResponse>();
 
+                var message = $"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}";
                 if (errorResponse.Code == 3013) // not able to quote at the moment
-                    _log.Info($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}");
+                    _log.Info(message);
                 else
-                    _log.Warning($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}");
+                    _log.Warning(message);
 
                 return;
             }
@@ -395,10 +409,8 @@ namespace Lykke.B2c2Client
                     return;
                 }
 
-                _log.Info($"State: {_clientWebSocket.State}, has not received any price message for 3 minutes:" +
-                          $"{HasNotReceivedAnyPriceMessageFor(_priceEventsTimeOut)}." +
-                          $"priceEventsTimeOut: {_priceEventsTimeOut.TotalSeconds} seconds." +
-                          $"LastPriceMessageTimestamp: {LastPriceMessageTimestamp}.");
+                _log.Info($"State: {_clientWebSocket.State}, has not received any price message for {_priceEventsTimeOut.TotalSeconds} seconds? :" +
+                          $"{HasNotReceivedAnyPriceMessageFor(_priceEventsTimeOut)}.");
 
                 if (_clientWebSocket.State != WebSocketState.Open
                     || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnyPriceMessageFor(_priceEventsTimeOut))
@@ -408,13 +420,15 @@ namespace Lykke.B2c2Client
 
                     _log.Info($"Resubscribing for {_instrumentsHandlers.Count} handlers...");
 
+                    IsReconnecting = true;
                     foreach (var instrument in _instrumentsHandlers.Keys)
                     {
                         var levels = _instrumentsLevels[instrument];
                         var handler = _instrumentsHandlers[instrument];
 
-                        await SubscribeAsync(instrument, levels, handler, ct, true);
+                        await SubscribeAsync(instrument, levels, handler, ct);
                     }
+                    IsReconnecting = false;
                 }
             }
             catch (Exception ex)
@@ -439,11 +453,11 @@ namespace Lykke.B2c2Client
             return _awaitingUnsubscriptions.ContainsKey(instrument);
         }
 
-        private void ThrowIfSubscriptionIsAlreadyExist(string instrument, bool isReconnecting)
+        private void ThrowIfSubscriptionIsAlreadyExist(string instrument)
         {
             lock (_sync)
             {
-                if (!isReconnecting && IsSubscriptionInProgress(instrument))
+                if (!IsReconnecting && IsSubscriptionInProgress(instrument))
                     throw new B2c2WebSocketException($"Subscription to '{instrument}' is already existed.");
             }
         }

@@ -18,7 +18,7 @@ namespace Lykke.B2c2Client.Models.WebSocket
         [JsonProperty("success")]
         public bool Success { get; set; }
 
-        [JsonProperty("timestamp"), JsonConverter(typeof(UnixDateTimeConverterFromMilliseconds))]
+        [JsonProperty("timestamp"), JsonConverter(typeof(UnixDateTimeFromMillisecondsConverter))]
         public DateTime Timestamp { get; set; }
     }
 }
