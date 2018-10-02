@@ -320,10 +320,6 @@ namespace Lykke.B2c2Client
         {
             LastPriceMessageTimestamp = DateTime.UtcNow;
 
-            var timestampStr = jToken["timestamp"].Value<string>();
-            var timestamp = UnixDateTimeFromMillisecondsConverter.Convert(timestampStr);
-            _log.Info($"Success: {jToken["success"]?.Value<bool>()}, Timestamp: {timestamp}.");
-
             if (jToken["success"]?.Value<bool>() == false)
             {
                 var errorResponse = jToken.ToObject<SubscribeErrorResponse>();
