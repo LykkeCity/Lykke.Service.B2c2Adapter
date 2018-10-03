@@ -106,14 +106,18 @@ namespace Lykke.Service.B2c2Adapter.Services
                 var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
                 var levels = instrumentLevels.Levels;
 
+                var subscribed = 0;
                 try
                 {
                     _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync).GetAwaiter().GetResult();
+                    subscribed++;
                 }
                 catch (B2c2WebSocketException e)
                 {
                     _log.Warning($"Can't subscribe to instrument {instrumentWithSuffix}. {e.Message}");
                 }
+
+                _log.Info($"Subscribed to {subscribed} of {_instrumentsLevels.Count}.");
             }
         }
 
