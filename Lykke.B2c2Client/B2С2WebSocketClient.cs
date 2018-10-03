@@ -95,7 +95,7 @@ namespace Lykke.B2c2Client
             _awaitingUnsubscriptions = new ConcurrentDictionary<string, Subscription>();
             _tradableInstruments = new List<string>();
             _cancellationTokenSource = new CancellationTokenSource();
-            _reconnectIfNeededTrigger = new TimerTrigger(nameof(B2С2WebSocketClient), new TimeSpan(0, 0, 1, 0), logFactory, ReconnectIfNeeded);
+            _reconnectIfNeededTrigger = new TimerTrigger(nameof(B2С2WebSocketClient), new TimeSpan(0, 0, 0, 30), logFactory, ReconnectIfNeeded);
             _reconnectIfNeededTrigger.Start();
         }
 
@@ -341,8 +341,6 @@ namespace Lykke.B2c2Client
 
             var result = jToken.ToObject<PriceMessage>();
 
-            _log.Info($"Successful message received, timestamp: {result.Timestamp}.");
-
             if (result.Timestamp > LastSuccessPriceMessageTimestamp)
                 LastSuccessPriceMessageTimestamp = result.Timestamp;
 
@@ -425,7 +423,7 @@ namespace Lykke.B2c2Client
                     return;
                 }
 
-                _log.Info($"Last successfull message : {LastSuccessPriceMessageTimestamp}, state: {_clientWebSocket.State}.");
+                _log.Info($"Last successfull message : {Math.Round((DateTime.UtcNow - LastSuccessPriceMessageTimestamp).TotalSeconds)} seconds ago.");
 
                 if (_clientWebSocket.State != WebSocketState.Open
                     || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnySuccessPriceMessageFor(_priceEventsTimeOut))
