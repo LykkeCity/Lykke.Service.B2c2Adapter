@@ -33,7 +33,8 @@ namespace Lykke.B2c2Client
         private readonly ConcurrentDictionary<string, Subscription> _awaitingUnsubscriptions;
         private readonly IList<string> _tradableInstruments;
         private readonly CancellationTokenSource _cancellationTokenSource;
-        private readonly TimerTrigger _trigger;
+        private readonly TimerTrigger _reconnectIfNeededTrigger;
+        private readonly TimerTrigger _forceReconnectionTrigger;
 
         private readonly object _lockIsReconnecting = new object();
         private bool _isReconnecting;
@@ -75,7 +76,7 @@ namespace Lykke.B2c2Client
             }
         }
 
-        public B2С2WebSocketClient(B2C2ClientSettings settings, ILogFactory logFactory)
+        public B2С2WebSocketClient(B2C2ClientSettings settings, ILogFactory logFactory, TimeSpan forceReconnectionInterval)
         {
             if (settings == null) throw new NullReferenceException(nameof(settings));
             var url = settings.Url;
@@ -95,8 +96,10 @@ namespace Lykke.B2c2Client
             _awaitingUnsubscriptions = new ConcurrentDictionary<string, Subscription>();
             _tradableInstruments = new List<string>();
             _cancellationTokenSource = new CancellationTokenSource();
-            _trigger = new TimerTrigger(nameof(B2С2WebSocketClient), new TimeSpan(0, 0, 1, 0), logFactory, ReconnectIfNeeded);
-            _trigger.Start();
+            _reconnectIfNeededTrigger = new TimerTrigger(nameof(B2С2WebSocketClient), new TimeSpan(0, 0, 1, 0), logFactory, ReconnectIfNeeded);
+            _reconnectIfNeededTrigger.Start();
+            _forceReconnectionTrigger = new TimerTrigger(nameof(B2С2WebSocketClient), forceReconnectionInterval, logFactory, ForceReconnect);
+            _forceReconnectionTrigger.Start();
         }
 
         public Task SubscribeAsync(string instrument, decimal[] levels, Func<PriceMessage, Task> handler,
@@ -132,7 +135,7 @@ namespace Lykke.B2c2Client
                     {
                         _awaitingSubscriptions.TryRemove(instrument, out _);
                     }
-                    taskCompletionSource.TrySetException(new B2c2WebSocketException("Timeout."));
+                    taskCompletionSource.TrySetException(new B2c2WebSocketException($"Subscription timeout for {instrument}."));
                 }
             }, ct);
             #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
@@ -171,7 +174,7 @@ namespace Lykke.B2c2Client
                     {
                         _awaitingUnsubscriptions.TryRemove(instrument, out _);
                     }
-                    taskCompletionSource.TrySetException(new B2c2WebSocketException("Timeout."));
+                    taskCompletionSource.TrySetException(new B2c2WebSocketException($"Unsubscription timeout for {instrument}."));
                 }
             }, ct);
             #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
@@ -417,28 +420,56 @@ namespace Lykke.B2c2Client
                 if (_clientWebSocket.State != WebSocketState.Open
                     || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnySuccessPriceMessageFor(_priceEventsTimeOut))
                 {
-                    _log.Info("Reconnection started.");
-
-                    _clientWebSocket.Dispose();
-                    _clientWebSocket = new ClientWebSocket();
-
-                    _log.Info($"Resubscribing for {_instrumentsHandlers.Count} handlers...");
-
-                    IsReconnecting = true;
-                    foreach (var instrument in _instrumentsHandlers.Keys)
-                    {
-                        var levels = _instrumentsLevels[instrument];
-                        var handler = _instrumentsHandlers[instrument];
-
-                        await SubscribeAsync(instrument, levels, handler, ct);
-                    }
-                    IsReconnecting = false;
+                    await Reconnect(ct);
                 }
             }
             catch (Exception ex)
             {
                 _log.Error(ex);
             }
+        }
+
+        private async Task ForceReconnect(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
+        {
+            try
+            {
+                if (LastSuccessPriceMessageTimestamp == default(DateTime))
+                {
+                    _log.Info("There was no any price messages yet.");
+                    return;
+                }
+
+                await Reconnect(ct);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex);
+            }
+        }
+
+        private async Task Reconnect(CancellationToken ct)
+        {
+            _log.Info("Reconnection started.");
+
+            _clientWebSocket.Dispose();
+            _clientWebSocket = new ClientWebSocket();
+
+            _log.Info($"Resubscribing for {_instrumentsHandlers.Count} handlers...");
+
+            IsReconnecting = true;
+
+            foreach (var instrument in _instrumentsHandlers.Keys)
+            {
+                if (ct.IsCancellationRequested)
+                    break;
+
+                var levels = _instrumentsLevels[instrument];
+                var handler = _instrumentsHandlers[instrument];
+
+                await SubscribeAsync(instrument, levels, handler, ct);
+            }
+
+            IsReconnecting = false;
         }
 
         private bool HasNotReceivedAnySuccessPriceMessageFor(TimeSpan period)
@@ -527,10 +558,16 @@ namespace Lykke.B2c2Client
                 _cancellationTokenSource.Dispose();
             }
 
-            if (_trigger != null)
+            if (_reconnectIfNeededTrigger != null)
             {
-                _trigger.Stop();
-                _trigger.Dispose();
+                _reconnectIfNeededTrigger.Stop();
+                _reconnectIfNeededTrigger.Dispose();
+            }
+
+            if (_forceReconnectionTrigger != null)
+            {
+                _forceReconnectionTrigger.Stop();
+                _forceReconnectionTrigger.Dispose();
             }
         }
 

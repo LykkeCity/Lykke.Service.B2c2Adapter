@@ -26,7 +26,8 @@ namespace Lykke.Service.B2c2Adapter.Modules
         {
             // B2C2 Client Lybrary
             builder.RegisterB2С2RestClient(new B2C2ClientSettings(_settings.RestUrl, _settings.AuthorizationToken));
-            builder.RegisterB2С2WebSocketClient(new B2C2ClientSettings(_settings.WebSocketUrl, _settings.AuthorizationToken));
+            builder.RegisterB2С2WebSocketClient(new B2C2ClientSettings(_settings.WebSocketUrl, _settings.AuthorizationToken),
+                _settings.ForceReconnectionInterval);
 
             // Publishers
             builder.RegisterType<OrderBookPublisher>()

@@ -17,6 +17,8 @@ namespace Lykke.Service.B2c2Adapter.Settings
 
         public TimeSpan PublishFromCacheInterval { get; set; }
 
+        public TimeSpan ForceReconnectionInterval { get; set; }
+
         public DbSettings Db { get; set; }
 
         public RabbitMqSettings RabbitMq { get; set; }
