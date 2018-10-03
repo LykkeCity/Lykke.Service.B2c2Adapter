@@ -339,9 +339,13 @@ namespace Lykke.B2c2Client
                 return;
             }
 
-            LastSuccessPriceMessageTimestamp = DateTime.UtcNow;
-
             var result = jToken.ToObject<PriceMessage>();
+
+            _log.Info($"Successful message received, timestamp: {result.Timestamp}.");
+
+            if (result.Timestamp > LastSuccessPriceMessageTimestamp)
+                LastSuccessPriceMessageTimestamp = result.Timestamp;
+
             Func<PriceMessage, Task> handler;
             lock (_sync)
             {
