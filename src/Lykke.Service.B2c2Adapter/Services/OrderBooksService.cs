@@ -32,7 +32,7 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly IOrderBookPublisher _orderBookPublisher;
         private readonly ITickPricePublisher _tickPricePublisher;        
         private readonly ILog _log;
-        private readonly TimerTrigger _trigger;
+        private readonly TimerTrigger _publishAllFromCacheTrigger;
 
         public OrderBooksService(
             IReadOnlyList<InstrumentLevels> instrumentsLevels,
@@ -53,8 +53,8 @@ namespace Lykke.Service.B2c2Adapter.Services
             _orderBookPublisher = orderBookPublisher ?? throw new NullReferenceException(nameof(orderBookPublisher));
             _tickPricePublisher = tickPricePublisher ?? throw new NullReferenceException(nameof(tickPricePublisher));
             _log = logFactory.CreateLog(this);
-            _trigger = new TimerTrigger(nameof(OrderBooksService), publishFromCacheInterval, logFactory, PublishAllFromCache);
-            _trigger.Start();
+            _publishAllFromCacheTrigger = new TimerTrigger(nameof(OrderBooksService), publishFromCacheInterval, logFactory, PublishAllFromCache);
+            _publishAllFromCacheTrigger.Start();
         }
 
         public void Start()
@@ -180,7 +180,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         public void Stop()
         {
-            _trigger.Stop();
+            _publishAllFromCacheTrigger.Stop();
         }
 
         #region IDisposable
@@ -200,10 +200,10 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             if (!disposing) return;
 
-            if (_trigger != null)
+            if (_publishAllFromCacheTrigger != null)
             {
-                _trigger.Stop();
-                _trigger.Dispose();
+                _publishAllFromCacheTrigger.Stop();
+                _publishAllFromCacheTrigger.Dispose();
             }
         }
 
