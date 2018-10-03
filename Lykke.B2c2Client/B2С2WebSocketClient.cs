@@ -412,8 +412,10 @@ namespace Lykke.B2c2Client
                     return;
                 }
 
+                _log.Info($"Last successfull message : {LastSuccessPriceMessageTimestamp}, state: {_clientWebSocket.State}.");
+
                 if (_clientWebSocket.State != WebSocketState.Open
-                    || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnyPriceMessageFor(_priceEventsTimeOut))
+                    || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnySuccessPriceMessageFor(_priceEventsTimeOut))
                 {
                     _log.Info("Reconnection started.");
 
@@ -439,7 +441,7 @@ namespace Lykke.B2c2Client
             }
         }
 
-        private bool HasNotReceivedAnyPriceMessageFor(TimeSpan period)
+        private bool HasNotReceivedAnySuccessPriceMessageFor(TimeSpan period)
         {
             return DateTime.UtcNow - LastSuccessPriceMessageTimestamp > period;
         }
