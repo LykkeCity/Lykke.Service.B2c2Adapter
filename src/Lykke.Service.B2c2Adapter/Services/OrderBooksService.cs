@@ -94,6 +94,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private void SubscribeToOrderBooks()
         {
+            var subscribed = 0;
             foreach (var instrumentLevels in _instrumentsLevels)
             {
                 var instrument = instrumentLevels.Instrument;
@@ -106,7 +107,6 @@ namespace Lykke.Service.B2c2Adapter.Services
                 var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
                 var levels = instrumentLevels.Levels;
 
-                var subscribed = 0;
                 try
                 {
                     _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync).GetAwaiter().GetResult();
@@ -115,10 +115,10 @@ namespace Lykke.Service.B2c2Adapter.Services
                 catch (B2c2WebSocketException e)
                 {
                     _log.Warning($"Can't subscribe to instrument {instrumentWithSuffix}. {e.Message}");
-                }
-
-                _log.Info($"Subscribed to {subscribed} of {_instrumentsLevels.Count}.");
+                }    
             }
+
+            _log.Info($"Subscribed to {subscribed} of {_instrumentsLevels.Count}.");
         }
 
         private async Task HandleAsync(PriceMessage message)
