@@ -412,12 +412,11 @@ namespace Lykke.B2c2Client
                     return;
                 }
 
-                _log.Info($"State: {_clientWebSocket.State}, has not received any price message for {_priceEventsTimeOut.TotalSeconds} seconds? :" +
-                          $"{HasNotReceivedAnyPriceMessageFor(_priceEventsTimeOut)}.");
-
                 if (_clientWebSocket.State != WebSocketState.Open
                     || _clientWebSocket.State == WebSocketState.Open && HasNotReceivedAnyPriceMessageFor(_priceEventsTimeOut))
                 {
+                    _log.Info("Reconnection started.");
+
                     _clientWebSocket.Dispose();
                     _clientWebSocket = new ClientWebSocket();
 
