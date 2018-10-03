@@ -12,9 +12,9 @@ namespace Lykke.B2c2Client.Models.Rest
         public IReadOnlyList<Error> Errors { get; set; } = new List<Error>();
 
         [JsonProperty("from_documentation")]
-        public string Documentation => _codesMessages.ContainsKey((int)Status) ? _codesMessages[(int)Status] : "";
+        public string Documentation => CodesMessages.ContainsKey((int)Status) ? CodesMessages[(int)Status] : "";
 
-        private static IDictionary<int, string> _codesMessages = new Dictionary<int, string>
+        private static readonly IDictionary<int, string> CodesMessages = new Dictionary<int, string>
         {
             { 400, "Bad Request – Incorrect parameters." },
             { 401, "Unauthorized – Wrong Token." },
