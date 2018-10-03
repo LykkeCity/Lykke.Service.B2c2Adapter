@@ -9,7 +9,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
-using Lykke.B2c2Client.Converters;
 using Lykke.B2c2Client.Exceptions;
 using Lykke.B2c2Client.Models.WebSocket;
 using Lykke.B2c2Client.Settings;
@@ -57,21 +56,21 @@ namespace Lykke.B2c2Client
         }
 
         private readonly object _lockTimestamp = new object();
-        private DateTime _lastPriceMessageTimestamp;
-        private DateTime LastPriceMessageTimestamp
+        private DateTime _lastSuccessPriceMessageTimestamp;
+        private DateTime LastSuccessPriceMessageTimestamp
         {
             get
             {
                 lock (_lockTimestamp)
                 {
-                    return _lastPriceMessageTimestamp;
+                    return _lastSuccessPriceMessageTimestamp;
                 }
             }
             set
             {
                 lock (_lockTimestamp)
                 {
-                    _lastPriceMessageTimestamp = value;
+                    _lastSuccessPriceMessageTimestamp = value;
                 }
             }
         }
@@ -293,6 +292,8 @@ namespace Lykke.B2c2Client
                     _awaitingSubscriptions.TryRemove(instrument, out var value);
                     value?.TaskCompletionSource.TrySetException(
                         new B2c2WebSocketException($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}"));
+
+                    _log.Warning($"Failed to subscribe to {instrument}.");
                 }
 
                 return;
@@ -313,13 +314,13 @@ namespace Lykke.B2c2Client
                 _instrumentsHandlers[instrument] = subscription.Function;
 
                 subscription.TaskCompletionSource.SetResult(0);
+
+                _log.Info($"Subscribed to {instrument}.");
             }
         }
 
         private void HandlePriceMessage(JToken jToken)
         {
-            LastPriceMessageTimestamp = DateTime.UtcNow;
-
             if (jToken["success"]?.Value<bool>() == false)
             {
                 var errorResponse = jToken.ToObject<SubscribeErrorResponse>();
@@ -336,6 +337,8 @@ namespace Lykke.B2c2Client
             var result = jToken.ToObject<PriceMessage>();
             lock (_sync)
             {
+                LastSuccessPriceMessageTimestamp = DateTime.UtcNow;
+
                 var handler = _instrumentsHandlers[result.Instrument];
                 try
                 {
@@ -359,6 +362,8 @@ namespace Lykke.B2c2Client
                     _awaitingUnsubscriptions.Remove(instrument, out var value);
                     value.TaskCompletionSource.TrySetException(
                         new B2c2WebSocketException($"{nameof(UnsubscribeMessage)}.{nameof(UnsubscribeMessage.Success)} == false. {jToken}"));
+
+                    _log.Warning($"Failed to unsubscribe from {instrument}.");
                 }
 
                 return;
@@ -378,6 +383,8 @@ namespace Lykke.B2c2Client
                         new B2c2WebSocketException($"Attempt to second subscription to {result.Instrument}."));
 
                 _instrumentsHandlers.Remove(instrument, out _);
+
+                _log.Info($"Unsubscribed from {instrument}.");
             }
         }
 
@@ -399,7 +406,7 @@ namespace Lykke.B2c2Client
                     return;
                 }
 
-                if (LastPriceMessageTimestamp == default(DateTime))
+                if (LastSuccessPriceMessageTimestamp == default(DateTime))
                 {
                     _log.Info("There was no any price messages yet.");
                     return;
@@ -435,7 +442,7 @@ namespace Lykke.B2c2Client
 
         private bool HasNotReceivedAnyPriceMessageFor(TimeSpan period)
         {
-            return DateTime.UtcNow - LastPriceMessageTimestamp > period;
+            return DateTime.UtcNow - LastSuccessPriceMessageTimestamp > period;
         }
 
         private bool IsSubscriptionInProgress(string instrument)

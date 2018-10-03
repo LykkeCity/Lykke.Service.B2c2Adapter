@@ -10,6 +10,7 @@ using Common;
 using Common.Log;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Exceptions;
+using Lykke.B2c2Client.Models.Rest;
 using Lykke.B2c2Client.Models.WebSocket;
 using Lykke.Common.ExchangeAdapter.Contracts;
 using Lykke.Common.Log;

@@ -6,13 +6,13 @@ namespace Lykke.B2c2Client.Models.Rest
     public class Error
     {
         [JsonProperty("code")]
-        public int Code { get; set; }
+        public ErrorCode Code { get; set; }
 
         [JsonProperty("message")]
         public string Message { get; set; }
 
         [JsonProperty("from_documentation")]
-        public string Documentation => CodesMessages.ContainsKey(Code) ? CodesMessages[Code] : "";
+        public string Documentation => CodesMessages.ContainsKey((int)Code) ? CodesMessages[(int)Code] : "";
 
         private static readonly IDictionary<int, string> CodesMessages = new Dictionary<int, string>
         {
