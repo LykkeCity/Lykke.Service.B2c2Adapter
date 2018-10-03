@@ -10,7 +10,6 @@ using Common;
 using Common.Log;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Exceptions;
-using Lykke.B2c2Client.Models.Rest;
 using Lykke.B2c2Client.Models.WebSocket;
 using Lykke.Common.ExchangeAdapter.Contracts;
 using Lykke.Common.Log;
@@ -54,13 +53,14 @@ namespace Lykke.Service.B2c2Adapter.Services
             _tickPricePublisher = tickPricePublisher ?? throw new NullReferenceException(nameof(tickPricePublisher));
             _log = logFactory.CreateLog(this);
             _publishAllFromCacheTrigger = new TimerTrigger(nameof(OrderBooksService), publishFromCacheInterval, logFactory, PublishAllFromCache);
-            _publishAllFromCacheTrigger.Start();
         }
 
         public void Start()
         {
             InitializeAssetPairs();
             SubscribeToOrderBooks();
+
+            _publishAllFromCacheTrigger.Start();
         }
 
         public IReadOnlyCollection<string> GetAllInstruments()
@@ -95,27 +95,37 @@ namespace Lykke.Service.B2c2Adapter.Services
         private void SubscribeToOrderBooks()
         {
             var subscribed = 0;
-            foreach (var instrumentLevels in _instrumentsLevels)
+            var skipped = 0;
+
+            using (var enumerator = _instrumentsLevels.GetEnumerator())
             {
-                var instrument = instrumentLevels.Instrument;
-                if (_withWithoutSuffixMapping.ContainsKey(instrument))
+                enumerator.MoveNext();
+                while (_instrumentsLevels.Count != subscribed + skipped)
                 {
-                    _log.Warning($"Didn't find instrument {instrument}.");
-                    continue;
-                }
+                    var instrumentLevels = enumerator.Current;
+                    var instrument = instrumentLevels.Instrument;
 
-                var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
-                var levels = instrumentLevels.Levels;
+                    if (_withWithoutSuffixMapping.ContainsKey(instrument))
+                    {
+                        _log.Warning($"Didn't find instrument {instrument}.");
+                        skipped++;
+                        continue;
+                    }
 
-                try
-                {
-                    _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync).GetAwaiter().GetResult();
-                    subscribed++;
+                    var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
+                    var levels = instrumentLevels.Levels;
+
+                    try
+                    {
+                        _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync).GetAwaiter().GetResult();
+                        subscribed++;
+                        enumerator.MoveNext();
+                    }
+                    catch (B2c2WebSocketException e)
+                    {
+                        _log.Warning($"Can't subscribe to instrument {instrumentWithSuffix}. {e.Message}");
+                    }
                 }
-                catch (B2c2WebSocketException e)
-                {
-                    _log.Warning($"Can't subscribe to instrument {instrumentWithSuffix}. {e.Message}");
-                }    
             }
 
             _log.Info($"Subscribed to {subscribed} of {_instrumentsLevels.Count}.");

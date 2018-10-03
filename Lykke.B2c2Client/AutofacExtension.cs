@@ -35,11 +35,9 @@ namespace Lykke.B2c2Client
         /// </summary>
         /// <param name="builder">Autofac container builder.</param>
         /// <param name="settings">MarketMakerArbitrageDetector client settings.</param>
-        /// <param name="forceReconnectionInterval">Force reconnection interval.</param>
         public static void RegisterB2С2WebSocketClient(
             [NotNull] this ContainerBuilder builder,
-            [NotNull] B2C2ClientSettings settings,
-            TimeSpan forceReconnectionInterval)
+            [NotNull] B2C2ClientSettings settings)
         {
             if (builder == null)
                 throw new ArgumentNullException(nameof(builder));
@@ -49,7 +47,6 @@ namespace Lykke.B2c2Client
             builder.RegisterType<B2С2WebSocketClient>()
                 .As<IB2С2WebSocketClient>()
                 .SingleInstance()
-                .WithParameter(TypedParameter.From(forceReconnectionInterval))
                 .WithParameter(TypedParameter.From(settings));
         }
     }
