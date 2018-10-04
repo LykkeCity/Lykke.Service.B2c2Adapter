@@ -99,7 +99,7 @@ namespace Lykke.B2c2Client
 
             try
             {
-;               using (var response = await _client.PostAsJsonAsync("request_for_quote/", requestForQuoteRequest, ct))
+                using (var response = await _client.PostAsJsonAsync("request_for_quote/", requestForQuoteRequest, ct))
                 {
                     var status = response.StatusCode;
 
