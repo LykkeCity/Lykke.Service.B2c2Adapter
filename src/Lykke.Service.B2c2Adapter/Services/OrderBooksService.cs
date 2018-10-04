@@ -36,7 +36,6 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly ILogFactory _logFactory;
         private readonly ILog _log;
         private readonly TimerTrigger _publishAllFromCacheTrigger;
-        private readonly TimerTrigger _forceReconnectTrigger;
 
         public OrderBooksService(
             IReadOnlyList<InstrumentLevels> instrumentsLevels,
@@ -45,7 +44,6 @@ namespace Lykke.Service.B2c2Adapter.Services
             IOrderBookPublisher orderBookPublisher,
             ITickPricePublisher tickPricePublisher,
             TimeSpan publishFromCacheInterval,
-            TimeSpan forceReconnectInterval,
             B2C2ClientSettings webSocketC2ClientSettings,
             ILogFactory logFactory)
         {
@@ -63,7 +61,6 @@ namespace Lykke.Service.B2c2Adapter.Services
             _logFactory = logFactory;
             _log = logFactory.CreateLog(this);
             _publishAllFromCacheTrigger = new TimerTrigger(nameof(OrderBooksService), publishFromCacheInterval, logFactory, PublishAllFromCache);
-            _forceReconnectTrigger = new TimerTrigger(nameof(OrderBooksService), forceReconnectInterval, logFactory, ForceReconnect);
         }
 
         public void Start()
@@ -72,7 +69,6 @@ namespace Lykke.Service.B2c2Adapter.Services
             SubscribeToOrderBooks();
 
             _publishAllFromCacheTrigger.Start();
-            _forceReconnectTrigger.Start();
         }
 
         public IReadOnlyCollection<string> GetAllInstruments()
@@ -135,6 +131,12 @@ namespace Lykke.Service.B2c2Adapter.Services
                     }
                     catch (B2c2WebSocketException e)
                     {
+                        if (e.ErrorResponse.Errors.First().Code == ErrorCode.AlreadySubscribed)
+                        {
+                            subscribed++;
+                            enumerator.MoveNext();
+                        }
+
                         _log.Warning($"Can't subscribe to instrument {instrumentWithSuffix}. {e.Message}");
                     }
                 }
@@ -190,9 +192,12 @@ namespace Lykke.Service.B2c2Adapter.Services
             }
 
             _log.Info("Published from cache.");
+
+            if (!_healthCheck.Values.Any(x => x > 0))
+                ForceReconnect();
         }
 
-        private Task ForceReconnect(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
+        private void ForceReconnect()
         {
             try
             {
@@ -208,8 +213,6 @@ namespace Lykke.Service.B2c2Adapter.Services
             }
 
             _log.Info("Finished reconnection.");
-
-            return Task.CompletedTask;
         }
 
         private async Task PublishOrderBookAndTickPrice(OrderBook orderBook)

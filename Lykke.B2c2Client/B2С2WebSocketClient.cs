@@ -419,7 +419,7 @@ namespace Lykke.B2c2Client
                     if (_instrumentsHandlers.Count == 0 && _awaitingSubscriptions.Count == 0)
                     {
                         _log.Info(
-                            $"No handlers or awaiting subscriptions. Instruments handlers: {_instrumentsHandlers.Count}," +
+                            $"No handlers or awaiting subscriptions. Instruments handlers: {_instrumentsHandlers.Count}, " +
                             $"awaiting subscriptions: {_awaitingSubscriptions.Count}.");
                         return;
                     }
