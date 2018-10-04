@@ -51,6 +51,7 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .As<IStopable>()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.InstrumentLevels))
+                .WithParameter("reconnectIfNeededInterval", _settings.ReconnectIfNeededInterval)
                 .WithParameter("publishFromCacheInterval", _settings.PublishFromCacheInterval)
                 .WithParameter(TypedParameter.From(webSocketSettings));
         }

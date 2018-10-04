@@ -23,12 +23,10 @@ namespace Lykke.B2c2Client
         private readonly string _baseUri;
         private readonly string _authorizationToken;
         private readonly ILog _log;
-        private readonly object _syncWebSocket = new object();
         private ClientWebSocket _clientWebSocket;
         private readonly object _sync = new object();
         private readonly ConcurrentDictionary<string, Subscription> _awaitingSubscriptions;
         private readonly ConcurrentDictionary<string, Func<PriceMessage, Task>> _instrumentsHandlers;
-        private readonly ConcurrentDictionary<string, decimal[]> _instrumentsLevels;
         private readonly ConcurrentDictionary<string, Subscription> _awaitingUnsubscriptions;
         private readonly IList<string> _tradableInstruments;
 
@@ -50,7 +48,6 @@ namespace Lykke.B2c2Client
             _clientWebSocket = new ClientWebSocket();
             _awaitingSubscriptions = new ConcurrentDictionary<string, Subscription>();
             _instrumentsHandlers = new ConcurrentDictionary<string, Func<PriceMessage, Task>>();
-            _instrumentsLevels = new ConcurrentDictionary<string, decimal[]>();
             _awaitingUnsubscriptions = new ConcurrentDictionary<string, Subscription>();
             _tradableInstruments = new List<string>();
             _cancellationTokenSource = new CancellationTokenSource();
@@ -63,6 +60,9 @@ namespace Lykke.B2c2Client
 
             ConnectIfNeeded(ct);
 
+            if (_clientWebSocket.State != WebSocketState.Open)
+                throw new B2c2WebSocketException($"State is not open: {_clientWebSocket.State}", new ErrorResponse { Code = ErrorCode.ConnectivityIssues });
+
             var tag = Guid.NewGuid().ToString();
 
             _log.Info($"Attempt to subscribe to order book updates, instrument: '{instrument}'.", tag);
@@ -74,8 +74,7 @@ namespace Lykke.B2c2Client
             var taskCompletionSource = new TaskCompletionSource<int>();
             lock (_sync)
             {
-                _awaitingSubscriptions[instrument] = new Subscription(tag, taskCompletionSource, handler);
-                _instrumentsLevels[instrument] = levels;
+                _awaitingSubscriptions[instrument] = new Subscription(tag, taskCompletionSource, handler);;
             }
 
             var successTask = Task.WhenAny(taskCompletionSource.Task, Task.Delay(_timeOut, ct)).GetAwaiter().GetResult();
@@ -142,32 +141,30 @@ namespace Lykke.B2c2Client
         
         private Task HandleMessagesCycleAsync(CancellationToken ct)
         {
-            while (_clientWebSocket.State == WebSocketState.Open)
+            while (_clientWebSocket?.State == WebSocketState.Open)
             {
                 using (var stream = new MemoryStream(8192))
                 {
                     var receiveBuffer = new ArraySegment<byte>(new byte[1024]);
                     try
                     {
-                        lock (_syncWebSocket)
+                        WebSocketReceiveResult receiveResult;
+                        do
                         {
-                            WebSocketReceiveResult receiveResult;
-                            do
-                            {
-                                receiveResult = _clientWebSocket.ReceiveAsync(receiveBuffer, ct).GetAwaiter().GetResult();
-                                stream.WriteAsync(receiveBuffer.Array, receiveBuffer.Offset, receiveResult.Count, ct).GetAwaiter().GetResult();
-                            } while (!receiveResult.EndOfMessage);
-                        }
+                            receiveResult = _clientWebSocket.ReceiveAsync(receiveBuffer, ct).GetAwaiter().GetResult();
+                            stream.WriteAsync(receiveBuffer.Array, receiveBuffer.Offset, receiveResult.Count, ct).GetAwaiter().GetResult();
+                        } while (!receiveResult.EndOfMessage);
+
+                        var messageBytes = stream.ToArray();
+                        var jsonMessage = Encoding.UTF8.GetString(messageBytes, 0, messageBytes.Length);
+
+                        if (!string.IsNullOrWhiteSpace(jsonMessage))
+                            HandleWebSocketMessageAsync(jsonMessage);
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
-                        _log.Error(e, "Error while processing a message from websocket.");
+                        // Ignore connection errors and errors during reconnection
                     }
-
-                    var messageBytes = stream.ToArray();
-                    var jsonMessage = Encoding.UTF8.GetString(messageBytes, 0, messageBytes.Length);
-
-                    HandleWebSocketMessageAsync(jsonMessage);
                 }
             }
 
@@ -180,12 +177,6 @@ namespace Lykke.B2c2Client
             var type = "";
             try
             {
-                if (string.IsNullOrWhiteSpace(jsonMessage))
-                {
-                    _log.Warning($"Empty message received: {jsonMessage}.");
-                    return;
-                }
-
                 jToken = JToken.Parse(jsonMessage);
                 type = jToken["event"]?.Value<string>();
 
@@ -232,15 +223,20 @@ namespace Lykke.B2c2Client
             var tag = jToken["tag"].Value<string>();
             if (jToken["success"]?.Value<bool>() == false)
             {
+                var errorResponse = jToken.ToObject<ErrorResponse>();
+
+                Subscription subscription;
+                string instrument;
                 lock (_sync)
                 {
-                    var instrument = _awaitingSubscriptions.Where(x => x.Value.Tag == tag).Select(x => x.Key).Single();
-                    _awaitingSubscriptions.TryRemove(instrument, out var value);
-                    value?.TaskCompletionSource.TrySetException(
-                        new B2c2WebSocketException($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}"));
-
-                    _log.Warning($"Failed to subscribe to {instrument}.");
+                    instrument = _awaitingSubscriptions.Where(x => x.Value.Tag == tag).Select(x => x.Key).Single();
+                    _awaitingSubscriptions.TryRemove(instrument, out subscription);
                 }
+
+                subscription?.TaskCompletionSource.TrySetException(
+                    new B2c2WebSocketException($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}", errorResponse));
+
+                _log.Warning($"Failed to subscribe to {instrument}.");
 
                 return;
             }
@@ -373,11 +369,8 @@ namespace Lykke.B2c2Client
         {
             try
             {
-                lock (_syncWebSocket)
-                {
-                    var requestSegment = StringToArraySegment(JsonConvert.SerializeObject(request));
-                    _clientWebSocket.SendAsync(requestSegment, WebSocketMessageType.Text, true, ct).ConfigureAwait(false).GetAwaiter().GetResult();
-                }
+                var requestSegment = StringToArraySegment(JsonConvert.SerializeObject(request));
+                _clientWebSocket.SendAsync(requestSegment, WebSocketMessageType.Text, true, ct).ConfigureAwait(false).GetAwaiter().GetResult();
             }
             catch (Exception e)
             {
