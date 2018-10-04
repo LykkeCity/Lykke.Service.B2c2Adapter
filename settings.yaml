@@ -14,11 +14,11 @@ B2c2AdapterService:
         types: 
             - JsonArray
 
-    PublishFromCacheInterval:
-        settings-key: B2C2AdapterService-PublishFromCacheInterval
+    ReconnectIfNeededInterval:
+        settings-key: B2C2AdapterService-ReconnectIfNeededInterval
 
     PublishFromCacheInterval:
-        settings-key: B2C2AdapterService-ReconnectIfNeededInterval
+        settings-key: B2C2AdapterService-PublishFromCacheInterval
 
     Db:
         LogsConnString:
