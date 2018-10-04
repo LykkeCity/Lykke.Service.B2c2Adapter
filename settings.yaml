@@ -17,6 +17,9 @@ B2c2AdapterService:
     PublishFromCacheInterval:
         settings-key: B2C2AdapterService-PublishFromCacheInterval
 
+    PublishFromCacheInterval:
+        settings-key: B2C2AdapterService-ReconnectIfNeededInterval
+
     Db:
         LogsConnString:
             settings-key: B2C2AdapterService-LogsConnectionString
