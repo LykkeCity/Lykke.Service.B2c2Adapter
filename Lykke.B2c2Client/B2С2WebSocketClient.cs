@@ -21,7 +21,7 @@ namespace Lykke.B2c2Client
     public class B2С2WebSocketClient : IB2С2WebSocketClient
     {
         private readonly TimeSpan _timeOut = new TimeSpan(0, 0, 0, 10);
-        private readonly TimeSpan _priceEventsTimeOut = new TimeSpan(0, 0, 0, 30);
+        private readonly TimeSpan _priceEventsTimeOut = new TimeSpan(0, 0, 1, 0);
         private readonly string _baseUri;
         private readonly string _authorizationToken;
         private readonly ILog _log;
