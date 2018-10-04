@@ -121,22 +121,12 @@ namespace Lykke.B2c2Client
                 _instrumentsLevels[instrument] = levels;
             }
 
-            // Throw exception if time out
-            #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            Task.Run(async () =>
-            {
-                await Task.Delay(_timeOut, ct);
-                if (!ct.IsCancellationRequested)
-                {
-                    lock (_sync)
-                    {
-                        _awaitingSubscriptions.TryRemove(instrument, out _);
-                    }
+            var successTask = Task.WhenAny(taskCompletionSource.Task, Task.Delay(_timeOut, ct)).GetAwaiter().GetResult();
 
-                    taskCompletionSource.TrySetException(new B2c2WebSocketException($"Subscription timeout for {instrument}."));
-                }
-            }, ct);
-            #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            if (successTask != taskCompletionSource.Task)
+            {
+                throw new B2c2WebSocketException($"Subscription timeout for {instrument}.");
+            }
 
             return taskCompletionSource.Task;
         }
@@ -161,22 +151,12 @@ namespace Lykke.B2c2Client
                 _awaitingUnsubscriptions[instrument] = new Subscription(tag, taskCompletionSource);
             }
 
-            // Throw exception if time out
-            #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            Task.Run(async () =>
-            {
-                await Task.Delay(_timeOut, ct);
-                if (!ct.IsCancellationRequested)
-                {
-                    lock (_sync)
-                    {
-                        _awaitingUnsubscriptions.TryRemove(instrument, out _);
-                    }
+            var successTask = Task.WhenAny(taskCompletionSource.Task, Task.Delay(_timeOut, ct)).GetAwaiter().GetResult();
 
-                    taskCompletionSource.TrySetException(new B2c2WebSocketException($"Unsubscription timeout for {instrument}."));
-                }
-            }, ct);
-            #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            if (successTask != taskCompletionSource.Task)
+            {
+                throw new B2c2WebSocketException($"Unsubscription timeout for {instrument}.");
+            }
 
             return taskCompletionSource.Task;
         }
@@ -430,24 +410,6 @@ namespace Lykke.B2c2Client
                 {
                     await Reconnect(ct);
                 }
-            }
-            catch (Exception ex)
-            {
-                _log.Error(ex);
-            }
-        }
-
-        private async Task ForceReconnect(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
-        {
-            try
-            {
-                if (LastSuccessPriceMessageTimestamp == default(DateTime))
-                {
-                    _log.Info("There was no any price messages yet.");
-                    return;
-                }
-
-                await Reconnect(ct);
             }
             catch (Exception ex)
             {

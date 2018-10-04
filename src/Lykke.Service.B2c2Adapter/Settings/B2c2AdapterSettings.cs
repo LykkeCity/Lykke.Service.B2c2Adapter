@@ -19,6 +19,6 @@ namespace Lykke.Service.B2c2Adapter.Settings
 
         public DbSettings Db { get; set; }
 
-        public RabbitMqSettings RabbitMq { get; set; }
+        public RabbitMqSettings RawPriceRabbitMq { get; set; }
     }
 }
