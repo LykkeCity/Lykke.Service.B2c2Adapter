@@ -248,7 +248,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                                    .ToList();
             try
             {
-                _log.Info($"Health check: {Environment.NewLine} {string.Join(Environment.NewLine, list)}");
+                _log.Info($"Health check: {Environment.NewLine}{string.Join(Environment.NewLine, list)}");
             }
             catch (Exception ex)
             {
