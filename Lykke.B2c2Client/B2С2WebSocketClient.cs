@@ -459,12 +459,14 @@ namespace Lykke.B2c2Client
         {
             _log.Info("Reconnection started.");
 
-            if (_clientWebSocket.State == WebSocketState.Open)
+            if (_clientWebSocket.State == WebSocketState.Open
+             || _clientWebSocket.State == WebSocketState.CloseSent
+             || _clientWebSocket.State == WebSocketState.CloseReceived)
             {
                 var cts = new CancellationTokenSource(new TimeSpan(0, 0, 0, 5));
                 await _clientWebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Invalid Timestamp.", cts.Token);
             }
-            if (_clientWebSocket.State == WebSocketState.Open)
+            if (_clientWebSocket.State != WebSocketState.Closed)
                 _clientWebSocket.Abort();
 
             _clientWebSocket.Dispose();
