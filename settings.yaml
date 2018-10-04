@@ -1,0 +1,59 @@
+B2c2AdapterService:
+    
+    RestUrl:
+        settings-key: B2C2AdapterService-RestUrl
+
+    WebSocketUrl:
+        settings-key: B2C2AdapterService-WebSocketUrl
+
+    AuthorizationToken:
+        settings-key: B2C2AdapterService-AuthorizationToken
+
+    InstrumentLevels:
+        settings-key: B2C2AdapterService-InstrumentLevels
+        types: 
+            - JsonArray
+
+    PublishFromCacheInterval:
+        settings-key: B2C2AdapterService-PublishFromCacheInterval
+
+    Db:
+        LogsConnString:
+            settings-key: B2C2AdapterService-LogsConnectionString
+            types:
+                - AzureTableStorage
+                - Logs
+
+    RabbitMq:
+        OrderBooks:
+            Enabled:
+                settings-key: B2C2AdapterService-OrderBooksEnabled
+            ConnectionString:
+                settings-key: RawPriceRabbitMq
+                types:
+                    - RabbitMq
+            ExchangeName:
+                settings-key: B2C2AdapterService-OrderBooksExchangeName
+        TickPrices:
+            Enabled:
+                settings-key: B2C2AdapterService-TickPricesEnabled
+            ConnectionString:
+                settings-key: RawPriceRabbitMq
+                types:
+                    - RabbitMq 
+            ExchangeName:
+                settings-key: B2C2AdapterService-TickPricesExchangeName
+
+SlackNotifications:
+    AzureQueue:
+        ConnectionString:
+            settings-key: SlackNotificationsConnString
+            types:
+                - AzureTableStorage
+        QueueName:
+            settings-key: SlackQueueName
+
+MonitoringServiceClient:
+    MonitoringServiceUrl:
+        settings-key: MonitoringServiceUrl
+
