@@ -137,7 +137,11 @@ namespace Lykke.Service.B2c2Adapter.Services
                     }
                     catch (B2c2WebSocketException e)
                     {
-                        return;
+                        if (e.ErrorResponse?.Errors?.FirstOrDefault()?.Code != ErrorCode.AlreadySubscribed)
+                            _log.Warning($"Can't subscribe to {instrument}.", e);
+
+                        skipped++;
+                        enumerator.MoveNext();
                     }
                 }
             }
@@ -246,10 +250,8 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private async Task PublishOrderBookAndTickPrice(OrderBook orderBook)
         {
-            // Publish order books
             await _orderBookPublisher.PublishAsync(orderBook);
 
-            // Publish tick prices
             var tickPrice = TickPrice.FromOrderBook(orderBook);
             await _tickPricePublisher.PublishAsync(tickPrice);
         }
