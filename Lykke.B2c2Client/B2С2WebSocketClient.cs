@@ -25,6 +25,7 @@ namespace Lykke.B2c2Client
         private readonly string _baseUri;
         private readonly string _authorizationToken;
         private readonly ILog _log;
+        private readonly object _syncWebSocket = new object();
         private ClientWebSocket _clientWebSocket;
         private readonly object _sync = new object();
         private readonly ConcurrentDictionary<string, Subscription> _awaitingSubscriptions;
@@ -202,54 +203,71 @@ namespace Lykke.B2c2Client
             _log.Info("Connection to WebSocket was sucessfuly closed.");
         }
         
-        private async Task HandleMessagesCycleAsync(CancellationToken ct)
+        private Task HandleMessagesCycleAsync(CancellationToken ct)
         {
             while (_clientWebSocket.State == WebSocketState.Open)
             {
-                try
+                using (var stream = new MemoryStream(8192))
                 {
-                    using (var stream = new MemoryStream(8192))
+                    var receiveBuffer = new ArraySegment<byte>(new byte[1024]);
+                    try
                     {
-                        var receiveBuffer = new ArraySegment<byte>(new byte[1024]);
-                        WebSocketReceiveResult receiveResult;
-                        do
+                        lock (_syncWebSocket)
                         {
-                            receiveResult = await _clientWebSocket.ReceiveAsync(receiveBuffer, ct);
-                            await stream.WriteAsync(receiveBuffer.Array, receiveBuffer.Offset, receiveResult.Count, ct);
-                        } while (!receiveResult.EndOfMessage);
-
-                        var messageBytes = stream.ToArray();
-                        var jsonMessage = Encoding.UTF8.GetString(messageBytes, 0, messageBytes.Length);
-
-                        HandleWebSocketMessageAsync(jsonMessage);
+                            WebSocketReceiveResult receiveResult;
+                            do
+                            {
+                                receiveResult = _clientWebSocket.ReceiveAsync(receiveBuffer, ct).GetAwaiter().GetResult();
+                                stream.WriteAsync(receiveBuffer.Array, receiveBuffer.Offset, receiveResult.Count, ct).GetAwaiter().GetResult();
+                            } while (!receiveResult.EndOfMessage);
+                        }
                     }
-                }
-                catch (Exception e)
-                {
-                    _log.Error(e, "Error while processing a message from websocket.");
+                    catch (Exception e)
+                    {
+                        _log.Error(e, "Error while processing a message from websocket.");
+                    }
+
+                    var messageBytes = stream.ToArray();
+                    var jsonMessage = Encoding.UTF8.GetString(messageBytes, 0, messageBytes.Length);
+
+                    HandleWebSocketMessageAsync(jsonMessage);
                 }
             }
+
+            return Task.CompletedTask;
         }
 
         private void HandleWebSocketMessageAsync(string jsonMessage)
         {
-            var jToken = JToken.Parse(jsonMessage);
-            var type = jToken["event"]?.Value<string>();
-
-            switch (type)
+            JToken jToken = null;
+            var type = "";
+            try
             {
-                case "tradable_instruments":
-                    HandleTradableInstrumentMessage(jToken);
-                    break;
-                case "subscribe":
-                    HandleSubscribeMessage(jToken);
-                    break;
-                case "price":
-                    HandlePriceMessage(jToken);
-                    break;
-                case "unsubscribe":
-                    HandleUnsubscribeMessage(jToken);
-                    break;
+                jToken = JToken.Parse(jsonMessage);
+                type = jToken["event"]?.Value<string>();
+
+                switch (type)
+                {
+                    case "tradable_instruments":
+                        HandleTradableInstrumentMessage(jToken);
+                        break;
+                    case "subscribe":
+                        HandleSubscribeMessage(jToken);
+                        break;
+                    case "price":
+                        HandlePriceMessage(jToken);
+                        break;
+                    case "unsubscribe":
+                        HandleUnsubscribeMessage(jToken);
+                        break;
+                    default:
+                        _log.Warning($"Strange type of message: {type}.");
+                        break;
+                }
+            }
+            catch (Exception e)
+            {
+                _log.Error(e, $"Type: {type}, message: {jToken}.");
             }
         }
 
@@ -298,7 +316,7 @@ namespace Lykke.B2c2Client
 
                 _instrumentsHandlers[instrument] = subscription.Function;
 
-                subscription.TaskCompletionSource.SetResult(0);
+                subscription.TaskCompletionSource.TrySetResult(0);
 
                 _log.Info($"Subscribed to {instrument}.");
             }
@@ -371,6 +389,8 @@ namespace Lykke.B2c2Client
                         new B2c2WebSocketException($"Attempt to second subscription to {result.Instrument}."));
 
                 _instrumentsHandlers.Remove(instrument, out _);
+
+                subscription.TaskCompletionSource.TrySetResult(0);
 
                 _log.Info($"Unsubscribed from {instrument}.");
             }
@@ -511,18 +531,23 @@ namespace Lykke.B2c2Client
             }
         }
 
-        private async Task SendMessageToWebSocket(IRequest request, CancellationToken ct = default(CancellationToken))
+        private Task SendMessageToWebSocket(IRequest request, CancellationToken ct = default(CancellationToken))
         {
             try
             {
-                var requestSegment = StringToArraySegment(JsonConvert.SerializeObject(request));
-                await _clientWebSocket.SendAsync(requestSegment, WebSocketMessageType.Text, true, ct).ConfigureAwait(false);
+                lock (_syncWebSocket)
+                {
+                    var requestSegment = StringToArraySegment(JsonConvert.SerializeObject(request));
+                    _clientWebSocket.SendAsync(requestSegment, WebSocketMessageType.Text, true, ct).ConfigureAwait(false).GetAwaiter().GetResult();
+                }
             }
             catch (Exception e)
             {
                 throw new B2c2WebSocketException(
                     "Something went wrong while sending a message to the web socket, see InternalException.", e);
             }
+
+            return Task.CompletedTask;
         }
 
         private void ConnectIfNeeded(CancellationToken ct = default(CancellationToken))
