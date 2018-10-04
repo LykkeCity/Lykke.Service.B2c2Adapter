@@ -488,7 +488,7 @@ namespace Lykke.B2c2Client
                 if (ct.IsCancellationRequested)
                     break;
 
-                if (failed > 4)
+                if (failed > 2)
                 {
                     _log.Info("More than 5 failed subscriptions.");
                     break;
