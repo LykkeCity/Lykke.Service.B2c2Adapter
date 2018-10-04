@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace Lykke.B2c2Client.Models.WebSocket
 {
-    public class SubscribeErrorResponse
+    public class ErrorResponse
     {
         [JsonProperty("event")]
         public string Event { get; set; }
@@ -15,7 +15,7 @@ namespace Lykke.B2c2Client.Models.WebSocket
         public string Tag { get; set; }
 
         [JsonProperty("error_code")]
-        public int Code { get; set; }
+        public ErrorCode Code { get; set; }
 
         [JsonProperty("error_message")]
         public string Message { get; set; }
@@ -24,7 +24,7 @@ namespace Lykke.B2c2Client.Models.WebSocket
         public Errors Errors { get; set; }
 
         [JsonProperty("from_documentation")]
-        public string Documentation => CodesMessages.ContainsKey(Code) ? CodesMessages[Code] : "";
+        public string Documentation => CodesMessages.ContainsKey((int)Code) ? CodesMessages[(int)Code] : "";
 
         private static readonly IDictionary<int, string> CodesMessages = new Dictionary<int, string>
         {

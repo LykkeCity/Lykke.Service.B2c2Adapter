@@ -11,6 +11,7 @@ using Common.Log;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Exceptions;
 using Lykke.B2c2Client.Models.WebSocket;
+using Lykke.B2c2Client.Settings;
 using Lykke.Common.ExchangeAdapter.Contracts;
 using Lykke.Common.Log;
 using Lykke.Service.B2c2Adapter.RabbitPublishers;
@@ -27,11 +28,15 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly ConcurrentDictionary<string, string> _withoutWithSuffixMapping;
         private readonly ConcurrentDictionary<string, OrderBook> _orderBooksCache;
         private readonly IB2С2RestClient _b2C2RestClient;
-        private readonly IB2С2WebSocketClient _b2C2WebSocketClient;
+        private IB2С2WebSocketClient _b2C2WebSocketClient;
+        private readonly B2C2ClientSettings _webSocketC2ClientSettings;
         private readonly IOrderBookPublisher _orderBookPublisher;
-        private readonly ITickPricePublisher _tickPricePublisher;        
+        private readonly ITickPricePublisher _tickPricePublisher;
+        private readonly ConcurrentDictionary<string, int> _healthCheck;
+        private readonly ILogFactory _logFactory;
         private readonly ILog _log;
         private readonly TimerTrigger _publishAllFromCacheTrigger;
+        private readonly TimerTrigger _forceReconnectTrigger;
 
         public OrderBooksService(
             IReadOnlyList<InstrumentLevels> instrumentsLevels,
@@ -40,6 +45,8 @@ namespace Lykke.Service.B2c2Adapter.Services
             IOrderBookPublisher orderBookPublisher,
             ITickPricePublisher tickPricePublisher,
             TimeSpan publishFromCacheInterval,
+            TimeSpan forceReconnectInterval,
+            B2C2ClientSettings webSocketC2ClientSettings,
             ILogFactory logFactory)
         {
             _withWithoutSuffixMapping = new ConcurrentDictionary<string, string>();
@@ -49,10 +56,14 @@ namespace Lykke.Service.B2c2Adapter.Services
             _instrumentsLevels = instrumentsLevels == null || !instrumentsLevels.Any() ? throw new ArgumentOutOfRangeException(nameof(_instrumentsLevels)) : instrumentsLevels;
             _b2C2RestClient = b2C2RestClient ?? throw new NullReferenceException(nameof(b2C2RestClient));
             _b2C2WebSocketClient = b2C2WebSocketClient ?? throw new NullReferenceException(nameof(b2C2RestClient));
+            _webSocketC2ClientSettings = webSocketC2ClientSettings ?? throw new NullReferenceException(nameof(webSocketC2ClientSettings));
             _orderBookPublisher = orderBookPublisher ?? throw new NullReferenceException(nameof(orderBookPublisher));
             _tickPricePublisher = tickPricePublisher ?? throw new NullReferenceException(nameof(tickPricePublisher));
+            _healthCheck = new ConcurrentDictionary<string, int>();
+            _logFactory = logFactory;
             _log = logFactory.CreateLog(this);
             _publishAllFromCacheTrigger = new TimerTrigger(nameof(OrderBooksService), publishFromCacheInterval, logFactory, PublishAllFromCache);
+            _forceReconnectTrigger = new TimerTrigger(nameof(OrderBooksService), forceReconnectInterval, logFactory, ForceReconnect);
         }
 
         public void Start()
@@ -61,6 +72,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             SubscribeToOrderBooks();
 
             _publishAllFromCacheTrigger.Start();
+            _forceReconnectTrigger.Start();
         }
 
         public IReadOnlyCollection<string> GetAllInstruments()
@@ -138,6 +150,8 @@ namespace Lykke.Service.B2c2Adapter.Services
             _orderBooksCache[instrument] = orderBook;
 
             await PublishOrderBookAndTickPrice(orderBook);
+
+            SetHelthCheck(message);
         }
 
         private static string InstrumentWoSuffix(string instrument)
@@ -163,6 +177,10 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             try
             {
+                await WriteHealthCheck();
+
+                _log.Info("Publishing from cache...");
+
                 foreach (var orderBook in _orderBooksCache.Values)
                     await PublishOrderBookAndTickPrice(orderBook);
             }
@@ -170,6 +188,28 @@ namespace Lykke.Service.B2c2Adapter.Services
             {
                 _log.Error(ex);
             }
+
+            _log.Info("Published from cache.");
+        }
+
+        private Task ForceReconnect(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
+        {
+            try
+            {
+                _log.Info("Force reconnection...");
+
+                _b2C2WebSocketClient.Dispose();
+                _b2C2WebSocketClient = new B2С2WebSocketClient(_webSocketC2ClientSettings, _logFactory);
+                SubscribeToOrderBooks();
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex);
+            }
+
+            _log.Info("Finished reconnection.");
+
+            return Task.CompletedTask;
         }
 
         private async Task PublishOrderBookAndTickPrice(OrderBook orderBook)
@@ -190,6 +230,35 @@ namespace Lykke.Service.B2c2Adapter.Services
                 result.Add(new OrderBookItem(qp.Price, qp.Quantity));
 
             return result;
+        }
+
+        private void SetHelthCheck(PriceMessage result)
+        {
+            if (_healthCheck.TryGetValue(result.Instrument, out var counter))
+                _healthCheck[result.Instrument] = counter + 1;
+            else
+                _healthCheck[result.Instrument] = 1;
+        }
+
+        private Task WriteHealthCheck()
+        {
+            var list = _healthCheck.OrderBy(x => x.Value)
+                                   .Select(x => x.Key)
+                                   .Select(key => $"{key} : {_healthCheck[key]}")
+                                   .ToList();
+            try
+            {
+                _log.Info($"Health check: {Environment.NewLine} {string.Join(Environment.NewLine, list)}");
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex);
+            }
+
+            foreach (var key in _healthCheck.Keys)
+                _healthCheck[key] = 0;
+
+            return Task.CompletedTask;
         }
 
         public void Stop()

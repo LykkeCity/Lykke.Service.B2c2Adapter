@@ -24,9 +24,11 @@ namespace Lykke.Service.B2c2Adapter.Modules
 
         protected override void Load(ContainerBuilder builder)
         {
+            var webSocketSettings = new B2C2ClientSettings(_settings.WebSocketUrl, _settings.AuthorizationToken);
+
             // B2C2 Client Lybrary
             builder.RegisterB2С2RestClient(new B2C2ClientSettings(_settings.RestUrl, _settings.AuthorizationToken));
-            builder.RegisterB2С2WebSocketClient(new B2C2ClientSettings(_settings.WebSocketUrl, _settings.AuthorizationToken));
+            builder.RegisterB2С2WebSocketClient(webSocketSettings);
 
             // Publishers
             builder.RegisterType<OrderBookPublisher>()
@@ -49,7 +51,9 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .As<IStopable>()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.InstrumentLevels))
-                .WithParameter(TypedParameter.From(_settings.PublishFromCacheInterval));
+                .WithParameter("publishFromCacheInterval", _settings.PublishFromCacheInterval)
+                .WithParameter("forceReconnectInterval", _settings.ForceReconnectInterval)
+                .WithParameter(TypedParameter.From(webSocketSettings));
         }
     }
 }
