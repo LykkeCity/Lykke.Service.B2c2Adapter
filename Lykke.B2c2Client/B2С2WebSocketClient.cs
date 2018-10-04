@@ -490,7 +490,7 @@ namespace Lykke.B2c2Client
 
                 if (failed > 2)
                 {
-                    _log.Info("More than 5 failed subscriptions.");
+                    _log.Info($"{failed} failed subscriptions, aborted.");
                     break;
                 }
 
@@ -513,7 +513,7 @@ namespace Lykke.B2c2Client
                 }
             }
 
-            _log.Info($"Resubscribed.");
+            _log.Info($"Resubscription finished.");
 
             IsReconnecting = false;
         }
