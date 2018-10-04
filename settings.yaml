@@ -24,7 +24,7 @@ B2c2AdapterService:
                 - AzureTableStorage
                 - Logs
 
-    RabbitMq:
+    RawPriceRabbitMq:
         OrderBooks:
             Enabled:
                 settings-key: B2C2AdapterService-OrderBooksEnabled
