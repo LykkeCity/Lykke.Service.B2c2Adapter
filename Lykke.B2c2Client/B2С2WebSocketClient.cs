@@ -7,7 +7,6 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Common;
 using Common.Log;
 using Lykke.B2c2Client.Exceptions;
 using Lykke.B2c2Client.Models.WebSocket;
@@ -21,7 +20,6 @@ namespace Lykke.B2c2Client
     public class B2С2WebSocketClient : IB2С2WebSocketClient
     {
         private readonly TimeSpan _timeOut = new TimeSpan(0, 0, 0, 10);
-        private readonly TimeSpan _priceEventsTimeOut = new TimeSpan(0, 0, 1, 0);
         private readonly string _baseUri;
         private readonly string _authorizationToken;
         private readonly ILog _log;
@@ -35,47 +33,6 @@ namespace Lykke.B2c2Client
         private readonly IList<string> _tradableInstruments;
 
         private readonly CancellationTokenSource _cancellationTokenSource;
-        private readonly TimerTrigger _periodicCheckTrigger;
-
-        private readonly object _lockIsReconnecting = new object();
-        private bool _isReconnecting;
-        private bool IsReconnecting
-        {
-            get
-            {
-                lock (_lockIsReconnecting)
-                {
-                    return _isReconnecting;
-                }
-            }
-            set
-            {
-                lock (_lockIsReconnecting)
-                {
-                    _isReconnecting = value;
-                }
-            }
-        }
-
-        private readonly object _lockTimestamp = new object();
-        private DateTime _lastSuccessPriceMessageTimestamp;
-        private DateTime LastSuccessPriceMessageTimestamp
-        {
-            get
-            {
-                lock (_lockTimestamp)
-                {
-                    return _lastSuccessPriceMessageTimestamp;
-                }
-            }
-            set
-            {
-                lock (_lockTimestamp)
-                {
-                    _lastSuccessPriceMessageTimestamp = value;
-                }
-            }
-        }
 
         public B2С2WebSocketClient(B2C2ClientSettings settings, ILogFactory logFactory)
         {
@@ -97,8 +54,6 @@ namespace Lykke.B2c2Client
             _awaitingUnsubscriptions = new ConcurrentDictionary<string, Subscription>();
             _tradableInstruments = new List<string>();
             _cancellationTokenSource = new CancellationTokenSource();
-            _periodicCheckTrigger = new TimerTrigger(nameof(B2С2WebSocketClient), new TimeSpan(0, 0, 1, 0), logFactory, ReconnectIfNeeded);
-            _periodicCheckTrigger.Start();
         }
 
         public Task SubscribeAsync(string instrument, decimal[] levels, Func<PriceMessage, Task> handler,
@@ -183,25 +138,6 @@ namespace Lykke.B2c2Client
                     if (t.IsFaulted)
                         _log.Error(t.Exception, "Something went wrong in subscription thread.");
                 }, default(CancellationToken));
-        }
-
-        private void Disconnect(CancellationToken ct = default(CancellationToken))
-        {
-            _log.Info("Attempt to close a WebSocket connection.");
-
-            if (_clientWebSocket != null && _clientWebSocket.State == WebSocketState.Open)
-            {
-                _clientWebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Normal closure.", ct).GetAwaiter().GetResult();
-            }
-
-            lock (_sync)
-            {
-                _awaitingSubscriptions.Clear();
-                _instrumentsHandlers.Clear();
-                _tradableInstruments.Clear();
-            }
-
-            _log.Info("Connection to WebSocket was sucessfuly closed.");
         }
         
         private Task HandleMessagesCycleAsync(CancellationToken ct)
@@ -318,7 +254,7 @@ namespace Lykke.B2c2Client
 
                 _awaitingSubscriptions.Remove(instrument, out var subscription);
                 
-                if (_instrumentsHandlers.ContainsKey(instrument) && !IsReconnecting)
+                if (_instrumentsHandlers.ContainsKey(instrument))
                     subscription.TaskCompletionSource.TrySetException(new B2c2WebSocketException($"Attempt to second subscription to {instrument}."));
 
                 _instrumentsHandlers[instrument] = subscription.Function;
@@ -345,9 +281,6 @@ namespace Lykke.B2c2Client
             }
 
             var result = jToken.ToObject<PriceMessage>();
-
-            if (result.Timestamp > LastSuccessPriceMessageTimestamp)
-                LastSuccessPriceMessageTimestamp = result.Timestamp;
 
             Func<PriceMessage, Task> handler;
             lock (_sync)
@@ -410,102 +343,6 @@ namespace Lykke.B2c2Client
             return messageArraySegment;
         }
 
-        private async Task ReconnectIfNeeded(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
-        {
-            try
-            {
-                lock (_sync)
-                {
-                    if (_instrumentsHandlers.Count == 0 && _awaitingSubscriptions.Count == 0)
-                    {
-                        _log.Info(
-                            $"No handlers or awaiting subscriptions. Instruments handlers: {_instrumentsHandlers.Count}, " +
-                            $"awaiting subscriptions: {_awaitingSubscriptions.Count}.");
-                        return;
-                    }
-                }
-
-                if (LastSuccessPriceMessageTimestamp == default(DateTime))
-                {
-                    _log.Info("There was no any price messages yet.");
-                    return;
-                }
-
-                _log.Info(
-                    $"Last successfull message : {Math.Round((DateTime.UtcNow - LastSuccessPriceMessageTimestamp).TotalSeconds)} seconds ago.");
-
-                if (_clientWebSocket.State != WebSocketState.Open
-                    || _clientWebSocket.State == WebSocketState.Open &&
-                    HasNotReceivedAnySuccessPriceMessageFor(_priceEventsTimeOut))
-                {
-                    await Reconnect(ct);
-                }
-            }
-            catch (Exception ex)
-            {
-                _log.Error(ex);
-            }
-        }
-
-        private async Task Reconnect(CancellationToken ct)
-        {
-            _log.Info("Reconnection started.");
-
-            _clientWebSocket.Abort();
-            _clientWebSocket.Dispose();
-            _clientWebSocket = new ClientWebSocket();
-
-            _log.Info($"Resubscribing for {_instrumentsHandlers.Count} handlers...");
-
-            IsReconnecting = true;
-
-            IEnumerable<string> instruments;
-            lock (_sync)
-            {
-                instruments = _instrumentsHandlers.Keys;
-            }
-
-            var failed = 0;
-            foreach (var instrument in instruments)
-            {
-                if (ct.IsCancellationRequested)
-                    break;
-
-                if (failed > 2)
-                {
-                    _log.Info($"{failed} failed subscriptions, aborted.");
-                    break;
-                }
-
-                decimal[] levels;
-                Func<PriceMessage, Task> handler;
-                lock (_sync)
-                {
-                    levels = _instrumentsLevels[instrument];
-                    handler = _instrumentsHandlers[instrument];
-                }
-
-                try
-                {                        
-                    await SubscribeAsync(instrument, levels, handler, ct);
-                }
-                catch(Exception e)
-                {
-                    failed++;
-                    _log.Error(e);
-                }
-            }
-
-            _log.Info($"Resubscription finished.");
-
-            IsReconnecting = false;
-        }
-
-        private bool HasNotReceivedAnySuccessPriceMessageFor(TimeSpan period)
-        {
-            return DateTime.UtcNow - LastSuccessPriceMessageTimestamp > period;
-        }
-
         private bool IsSubscriptionInProgress(string instrument)
         {
             lock (_sync)
@@ -517,7 +354,7 @@ namespace Lykke.B2c2Client
 
         private void ThrowIfSubscriptionIsAlreadyExist(string instrument)
         {
-            if (!IsReconnecting && IsSubscriptionInProgress(instrument))
+            if (IsSubscriptionInProgress(instrument))
                 throw new B2c2WebSocketException($"Subscription to '{instrument}' is already existed.");
         }
 
@@ -576,21 +413,15 @@ namespace Lykke.B2c2Client
             
             if (_clientWebSocket != null)
             {
-                _clientWebSocket.Abort();
-                _clientWebSocket.Dispose();
+                _clientWebSocket?.Abort();
+                _clientWebSocket?.Dispose();
                 _clientWebSocket = null;
             }
 
             if (_cancellationTokenSource != null && _cancellationTokenSource.Token.CanBeCanceled)
             {
-                _cancellationTokenSource.Cancel();
-                _cancellationTokenSource.Dispose();
-            }
-
-            if (_periodicCheckTrigger != null)
-            {
-                _periodicCheckTrigger.Stop();
-                _periodicCheckTrigger.Dispose();
+                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource?.Dispose();
             }
         }
 
