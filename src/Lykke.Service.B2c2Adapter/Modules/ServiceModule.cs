@@ -34,13 +34,13 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .As<IStartable>()
                 .As<IStopable>()
                 .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.RawPriceRabbitMq.OrderBooks));
+                .WithParameter(TypedParameter.From(_settings.RabbitMq.OrderBooks));
             builder.RegisterType<TickPricePublisher>()
                 .As<ITickPricePublisher>()
                 .As<IStartable>()
                 .As<IStopable>()
                 .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.RawPriceRabbitMq.TickPrices));
+                .WithParameter(TypedParameter.From(_settings.RabbitMq.TickPrices));
 
             // Order books service
             builder.RegisterType<OrderBooksService>()
