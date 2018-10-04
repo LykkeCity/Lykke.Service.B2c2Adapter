@@ -35,7 +35,7 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly ConcurrentDictionary<string, int> _healthCheck;
         private readonly ILogFactory _logFactory;
         private readonly ILog _log;
-        private readonly TimerTrigger _publishAllFromCacheTrigger;
+        private readonly TimerTrigger _trigger;
 
         public OrderBooksService(
             IReadOnlyList<InstrumentLevels> instrumentsLevels,
@@ -60,7 +60,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             _healthCheck = new ConcurrentDictionary<string, int>();
             _logFactory = logFactory;
             _log = logFactory.CreateLog(this);
-            _publishAllFromCacheTrigger = new TimerTrigger(nameof(OrderBooksService), publishFromCacheInterval, logFactory, PublishAllFromCache);
+            _trigger = new TimerTrigger(nameof(OrderBooksService), publishFromCacheInterval, logFactory, CheckForReconnectionAndPublishAllFromCache);
         }
 
         public void Start()
@@ -68,7 +68,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             InitializeAssetPairs();
             SubscribeToOrderBooks();
 
-            _publishAllFromCacheTrigger.Start();
+            _trigger.Start();
         }
 
         public IReadOnlyCollection<string> GetAllInstruments()
@@ -175,8 +175,11 @@ namespace Lykke.Service.B2c2Adapter.Services
             return result;
         }
 
-        private async Task PublishAllFromCache(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
+        private async Task CheckForReconnectionAndPublishAllFromCache(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
         {
+            if (!_healthCheck.Values.Any(x => x > 0))
+                ForceReconnect();
+
             try
             {
                 await WriteHealthCheck();
@@ -192,9 +195,6 @@ namespace Lykke.Service.B2c2Adapter.Services
             }
 
             _log.Info("Published from cache.");
-
-            if (!_healthCheck.Values.Any(x => x > 0))
-                ForceReconnect();
         }
 
         private void ForceReconnect()
@@ -266,7 +266,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         public void Stop()
         {
-            _publishAllFromCacheTrigger.Stop();
+            _trigger.Stop();
         }
 
         #region IDisposable
@@ -286,10 +286,10 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             if (!disposing) return;
 
-            if (_publishAllFromCacheTrigger != null)
+            if (_trigger != null)
             {
-                _publishAllFromCacheTrigger.Stop();
-                _publishAllFromCacheTrigger.Dispose();
+                _trigger.Stop();
+                _trigger.Dispose();
             }
         }
 
