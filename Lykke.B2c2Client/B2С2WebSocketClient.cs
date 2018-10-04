@@ -337,7 +337,7 @@ namespace Lykke.B2c2Client
 
                 var message = $"{nameof(PriceMessage)}.{nameof(PriceMessage.Success)} == false. {jToken}";
                 if (errorResponse.Code == ErrorCode.NotAbleToQuoteAtTheMoment)
-                    ;//_log.Info(message);
+                    _log.Info(message);
                 else
                     _log.Warning(message);
 
