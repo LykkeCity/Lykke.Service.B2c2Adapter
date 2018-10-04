@@ -132,16 +132,15 @@ namespace Lykke.Service.B2c2Adapter.Services
                     try
                     {
                         _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync).GetAwaiter().GetResult();
+
                         subscribed++;
                         enumerator.MoveNext();
                     }
                     catch (B2c2WebSocketException e)
                     {
-                        if (e.ErrorResponse?.Errors?.FirstOrDefault()?.Code != ErrorCode.AlreadySubscribed)
-                            _log.Warning($"Can't subscribe to {instrument}.", e);
+                        _log.Warning($"Can't subscribe to {instrument}, code: {e.ErrorResponse?.Errors?.FirstOrDefault()?.Code}.", e);
 
-                        skipped++;
-                        enumerator.MoveNext();
+                        return;
                     }
                 }
             }
