@@ -38,6 +38,7 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly TimeSpan _reconnectIfNeededInterval;
         private readonly TimerTrigger _reconnectIfNeededTrigger;
         private readonly TimerTrigger _publishFromCacheTrigger;
+        private DateTime Started;
 
         public OrderBooksService(
             IReadOnlyList<InstrumentLevels> instrumentsLevels,
@@ -75,6 +76,8 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             _reconnectIfNeededTrigger.Start();
             _publishFromCacheTrigger.Start();
+
+            Started = DateTime.UtcNow;
         }
 
         public IReadOnlyCollection<string> GetAllInstruments()
@@ -140,7 +143,8 @@ namespace Lykke.Service.B2c2Adapter.Services
                     {
                         _log.Warning($"Can't subscribe to {instrument}, code: {e.ErrorResponse?.Errors?.FirstOrDefault()?.Code}.", e);
 
-                        return;
+                        skipped++;
+                        enumerator.MoveNext();
                     }
                 }
             }
@@ -193,11 +197,14 @@ namespace Lykke.Service.B2c2Adapter.Services
                 var isReceivedAtLeastOneOrderBookAtAll = _orderBooksCache.Values.Any();
                 var isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval =
                     !_orderBooksCache.Values.Any(x => DateTime.UtcNow - x.Timestamp < _reconnectIfNeededInterval);
+                var isNotConnectedFor1MinSinceStart = DateTime.UtcNow - Started > new TimeSpan(0, 0, 1, 0);
 
-                var needToReconnect = isReceivedAtLeastOneOrderBookAtAll && isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval;
+                var needToReconnect = (isReceivedAtLeastOneOrderBookAtAll && isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval)
+                    || (!isReceivedAtLeastOneOrderBookAtAll && isNotConnectedFor1MinSinceStart);
 
                 _log.Info($"Reconnect needed: {needToReconnect}. Order books count = {_orderBooksCache.Count}, " +
-                          $"received fresh message since last check = {!isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval}.");
+                          $"received fresh message since last check = {!isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval}, " +
+                          $"not connected for 1 min since start = {isNotConnectedFor1MinSinceStart}.");
 
                 if (needToReconnect)
                     ForceReconnect();

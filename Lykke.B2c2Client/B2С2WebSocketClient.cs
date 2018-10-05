@@ -81,7 +81,7 @@ namespace Lykke.B2c2Client
 
             if (successTask != taskCompletionSource.Task)
             {
-                throw new B2c2WebSocketException($"Subscription timeout for {instrument}.");
+                throw new B2c2WebSocketException($"Subscription timeout for {instrument}." , new ErrorResponse { Code = ErrorCode.ConnectivityIssues});
             }
 
             return taskCompletionSource.Task;
