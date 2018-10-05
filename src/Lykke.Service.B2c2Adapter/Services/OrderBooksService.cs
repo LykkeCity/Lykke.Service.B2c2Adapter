@@ -133,16 +133,15 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             var subscribed = 0;
             var skipped = 0;
-            var connectivityIssues = 0;
 
             using (var enumerator = _instrumentsLevels.GetEnumerator())
             {
                 enumerator.MoveNext();
-                while (_instrumentsLevels.Count != subscribed + skipped)
+                while (_instrumentsLevels.Count < subscribed + skipped)
                 {
-                    if (connectivityIssues > 2)
+                    if (skipped > 2)
                     {
-                        _log.Info($"Connectivity issues: {connectivityIssues}.");
+                        _log.Info("Canceled due to connectivity issues.");
                         return;
                     }
 
@@ -168,12 +167,6 @@ namespace Lykke.Service.B2c2Adapter.Services
                     }
                     catch (B2c2WebSocketException e)
                     {
-                        if (e.ErrorResponse?.Errors?.FirstOrDefault()?.Code == ErrorCode.ConnectivityIssues)
-                        {
-                            connectivityIssues++;
-                            enumerator.MoveNext();
-                        }
-
                         _log.Warning($"Can't subscribe to {instrument}.", e);
 
                         skipped++;
