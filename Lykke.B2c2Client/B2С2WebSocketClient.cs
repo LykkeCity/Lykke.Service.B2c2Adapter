@@ -408,7 +408,6 @@ namespace Lykke.B2c2Client
             _clientWebSocket?.Dispose();
             _clientWebSocket = null;
 
-            _cancellationTokenSource?.Cancel();
             _cancellationTokenSource?.Dispose();
         }
 
