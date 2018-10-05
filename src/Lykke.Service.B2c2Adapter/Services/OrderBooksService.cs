@@ -111,6 +111,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             {
                 try
                 {
+                    Thread.Sleep(1000);
                     instruments = _b2C2RestClient.InstrumentsAsync().GetAwaiter().GetResult();
                     break;
                 }
