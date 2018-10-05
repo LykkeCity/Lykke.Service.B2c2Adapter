@@ -197,7 +197,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                 var isReceivedAtLeastOneOrderBookAtAll = _orderBooksCache.Values.Any();
                 var isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval =
                     !_orderBooksCache.Values.Any(x => DateTime.UtcNow - x.Timestamp < _reconnectIfNeededInterval);
-                var isNotConnectedFor1MinSinceStart = DateTime.UtcNow - Started > new TimeSpan(0, 0, 1, 0);
+                var isNotConnectedFor1MinSinceStart = Started != default(DateTime) && DateTime.UtcNow - Started > new TimeSpan(0, 0, 1, 0);
 
                 var needToReconnect = (isReceivedAtLeastOneOrderBookAtAll && isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval)
                     || (!isReceivedAtLeastOneOrderBookAtAll && isNotConnectedFor1MinSinceStart);
