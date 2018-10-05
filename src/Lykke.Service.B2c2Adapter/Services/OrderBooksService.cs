@@ -307,7 +307,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             _log.Info($"Health check: {Environment.NewLine}{string.Join(Environment.NewLine, list)}");
 
-            foreach (var key in _healthCheck.Keys)
+            foreach (var key in _healthCheck.Keys.ToList())
                 _healthCheck[key] = 0;
 
             return Task.CompletedTask;
