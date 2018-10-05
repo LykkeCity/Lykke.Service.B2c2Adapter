@@ -141,7 +141,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                     }
                     catch (B2c2WebSocketException e)
                     {
-                        _log.Warning($"Can't subscribe to {instrument}, code: {e.ErrorResponse?.Errors?.FirstOrDefault()?.Code}.", e);
+                        _log.Warning($"Can't subscribe to {instrument}.", e);
 
                         skipped++;
                         enumerator.MoveNext();
