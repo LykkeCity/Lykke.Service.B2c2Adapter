@@ -6,7 +6,7 @@ namespace Lykke.B2c2Client.Models.Rest
     public class Error
     {
         [JsonProperty("code")]
-        public ErrorCode Code { get; set; }
+        public WebSocket.ErrorCode Code { get; set; }
 
         [JsonProperty("message")]
         public string Message { get; set; }
