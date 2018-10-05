@@ -52,6 +52,7 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 PublishFromCacheInterval = _settings.PublishFromCacheInterval,
                 ForceReconnectInterval = _settings.ForceReconnectInterval
             };
+
             builder.RegisterType<OrderBooksService>()
                 .AsSelf()
                 .As<IStartable>()
