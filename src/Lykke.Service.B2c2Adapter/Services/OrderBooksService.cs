@@ -137,7 +137,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             using (var enumerator = _instrumentsLevels.GetEnumerator())
             {
                 enumerator.MoveNext();
-                while (_instrumentsLevels.Count < subscribed + skipped)
+                while (_instrumentsLevels.Count > subscribed + skipped)
                 {
                     if (skipped > 2)
                     {
