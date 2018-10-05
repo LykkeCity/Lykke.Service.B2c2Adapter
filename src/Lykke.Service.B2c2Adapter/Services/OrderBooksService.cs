@@ -131,43 +131,24 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private void SubscribeToOrderBooks()
         {
-            var subscribed = 0;
-            var skipped = 0;
-
-            using (var enumerator = _instrumentsLevels.GetEnumerator())
+            foreach (var instrumentLevels in _instrumentsLevels)
             {
-                enumerator.MoveNext();
-                while (_instrumentsLevels.Count > subscribed + skipped)
+                var instrument = instrumentLevels.Instrument;
+                var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
+                var levels = instrumentLevels.Levels;
+
+                try
                 {
-                    var instrumentLevels = enumerator.Current;
-                    var instrument = instrumentLevels.Instrument;
-
-                    if (_withWithoutSuffixMapping.ContainsKey(instrument))
-                    {
-                        _log.Warning($"Didn't find instrument {instrument}.");
-                        skipped++;
-                        continue;
-                    }
-
-                    var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
-                    var levels = instrumentLevels.Levels;
-
-                    try
-                    {
-                        _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync).GetAwaiter().GetResult();
-
-                        subscribed++;
-                        enumerator.MoveNext();
-                    }
-                    catch (Exception e)
-                    {
-                        _log.Info("Error occured during subscription.", exception: e);
-                        return;
-                    }
+                    _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync).GetAwaiter().GetResult();
+                }
+                catch (Exception e)
+                {
+                    _log.Info("Error occured during subscription.", exception: e);
+                    return;
                 }
             }
 
-            _log.Info($"Subscribed to {subscribed} of {_instrumentsLevels.Count}.");
+            _log.Info("Subscribed.");
         }
 
         private async Task HandleAsync(PriceMessage message)
