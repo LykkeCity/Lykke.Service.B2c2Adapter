@@ -45,14 +45,19 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .WithParameter(TypedParameter.From(_settings.RabbitMq.TickPrices));
 
             // Order books service
+            var orderBooksServiceSettings = new OrderBooksServiceSettings
+            {
+                InstrumentsLevels = _settings.InstrumentLevels,
+                ReconnectIfNeededInterval = _settings.ReconnectIfNeededInterval,
+                PublishFromCacheInterval = _settings.PublishFromCacheInterval,
+                ForceReconnectInterval = _settings.ForceReconnectInterval
+            };
             builder.RegisterType<OrderBooksService>()
                 .AsSelf()
                 .As<IStartable>()
                 .As<IStopable>()
                 .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.InstrumentLevels))
-                .WithParameter("reconnectIfNeededInterval", _settings.ReconnectIfNeededInterval)
-                .WithParameter("publishFromCacheInterval", _settings.PublishFromCacheInterval)
+                .WithParameter(TypedParameter.From(orderBooksServiceSettings))
                 .WithParameter(TypedParameter.From(webSocketSettings));
         }
     }

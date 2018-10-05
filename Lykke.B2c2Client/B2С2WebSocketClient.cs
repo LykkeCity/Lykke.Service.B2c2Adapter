@@ -404,18 +404,12 @@ namespace Lykke.B2c2Client
         {
             if (!disposing) return;
             
-            if (_clientWebSocket != null)
-            {
-                _clientWebSocket?.Abort();
-                _clientWebSocket?.Dispose();
-                _clientWebSocket = null;
-            }
+            _clientWebSocket?.Abort();
+            _clientWebSocket?.Dispose();
+            _clientWebSocket = null;
 
-            if (_cancellationTokenSource != null && _cancellationTokenSource.Token.CanBeCanceled)
-            {
-                _cancellationTokenSource?.Cancel();
-                _cancellationTokenSource?.Dispose();
-            }
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource?.Dispose();
         }
 
         #endregion
