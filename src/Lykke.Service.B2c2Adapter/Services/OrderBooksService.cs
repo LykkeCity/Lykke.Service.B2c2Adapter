@@ -10,12 +10,14 @@ using Common;
 using Common.Log;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Exceptions;
+using Lykke.B2c2Client.Models.Rest;
 using Lykke.B2c2Client.Models.WebSocket;
 using Lykke.B2c2Client.Settings;
 using Lykke.Common.ExchangeAdapter.Contracts;
 using Lykke.Common.Log;
 using Lykke.Service.B2c2Adapter.RabbitPublishers;
 using Lykke.Service.B2c2Adapter.Settings;
+using ErrorCode = Lykke.B2c2Client.Models.WebSocket.ErrorCode;
 
 namespace Lykke.Service.B2c2Adapter.Services
 {
@@ -103,7 +105,21 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private void InitializeAssetPairs()
         {
-            var instruments = _b2C2RestClient.InstrumentsAsync().GetAwaiter().GetResult();
+            IReadOnlyCollection<Instrument> instruments;
+
+            while (true)
+            {
+                try
+                {
+                    instruments = _b2C2RestClient.InstrumentsAsync().GetAwaiter().GetResult();
+                    break;
+                }
+                catch (Exception e)
+                {
+                    _log.Info("Exception occured while getting instruments.", exception: e);
+                }
+            }
+
             foreach (var instrument in instruments)
             {
                 var withoutSpotSuffix = InstrumentWoSuffix(instrument.Name);
