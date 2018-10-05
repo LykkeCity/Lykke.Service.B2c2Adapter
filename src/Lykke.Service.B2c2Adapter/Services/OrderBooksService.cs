@@ -139,12 +139,6 @@ namespace Lykke.Service.B2c2Adapter.Services
                 enumerator.MoveNext();
                 while (_instrumentsLevels.Count > subscribed + skipped)
                 {
-                    if (skipped > 2)
-                    {
-                        _log.Info("Canceled due to connectivity issues.");
-                        return;
-                    }
-
                     var instrumentLevels = enumerator.Current;
                     var instrument = instrumentLevels.Instrument;
 
@@ -165,12 +159,10 @@ namespace Lykke.Service.B2c2Adapter.Services
                         subscribed++;
                         enumerator.MoveNext();
                     }
-                    catch (B2c2WebSocketException e)
+                    catch (Exception e)
                     {
-                        _log.Warning($"Can't subscribe to {instrument}.", e);
-
-                        skipped++;
-                        enumerator.MoveNext();
+                        _log.Info("Error occured during subscription.", exception: e);
+                        return;
                     }
                 }
             }
