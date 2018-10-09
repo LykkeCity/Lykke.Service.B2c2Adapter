@@ -42,7 +42,7 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly TimerTrigger _reconnectIfNeededTrigger;
         private readonly TimerTrigger _publishFromCacheTrigger;
         private readonly TimerTrigger _forceReconnectTrigger;
-        private DateTime _started;
+        private readonly OrderBooksServiceSettings _settings;
 
         public OrderBooksService(
             IB2С2RestClient b2C2RestClient,
@@ -71,6 +71,8 @@ namespace Lykke.Service.B2c2Adapter.Services
             _publishFromCacheTrigger = new TimerTrigger(nameof(OrderBooksService), settings.PublishFromCacheInterval, logFactory, PublishAllFromCache);
             if (settings.ForceReconnectInterval > TimeSpan.Zero)
                 _forceReconnectTrigger = new TimerTrigger(nameof(OrderBooksService), settings.ForceReconnectInterval, logFactory, ForceReconnect);
+
+            _settings = settings;
         }
 
         public void Start()
@@ -81,8 +83,6 @@ namespace Lykke.Service.B2c2Adapter.Services
             _reconnectIfNeededTrigger.Start();
             _publishFromCacheTrigger.Start();
             _forceReconnectTrigger?.Start();
-
-            _started = DateTime.UtcNow;
         }
 
         public IReadOnlyCollection<string> GetAllInstruments()
@@ -101,6 +101,11 @@ namespace Lykke.Service.B2c2Adapter.Services
                 return null;
 
             return _orderBooksCache[assetPair];
+        }
+
+        public OrderBooksServiceSettings GetSettings()
+        {
+            return _settings;
         }
 
         private void InitializeAssetPairs()
