@@ -74,14 +74,14 @@ namespace Lykke.B2c2Client
             var taskCompletionSource = new TaskCompletionSource<int>();
             lock (_sync)
             {
-                _awaitingSubscriptions[instrument] = new Subscription(tag, taskCompletionSource, handler);;
+                _awaitingSubscriptions[instrument] = new Subscription(tag, taskCompletionSource, handler);
             }
 
             var successTask = Task.WhenAny(taskCompletionSource.Task, Task.Delay(_timeOut, ct)).GetAwaiter().GetResult();
 
             if (successTask != taskCompletionSource.Task)
             {
-                throw new B2c2WebSocketException($"Subscription timeout for {instrument}." , new ErrorResponse { Code = ErrorCode.ConnectivityIssues});
+                throw new TimeoutException($"Subscription timeout for {instrument}.");
             }
 
             return taskCompletionSource.Task;
@@ -95,7 +95,7 @@ namespace Lykke.B2c2Client
 
             _log.Info($"Attempt to subscribe to order book updates, instrument: '{instrument}'.", tag);
 
-            ThrowIfSubscriptionDeosNotExistOrUnsubscriptionAlreadyExists(instrument);
+            ThrowIfUnsubscriptionAlreadyExists(instrument);
 
             var unsubscribeRequest = new UnsubscribeRequest { Instrument = instrument, Tag = tag };
             SendMessageToWebSocket(unsubscribeRequest, ct).GetAwaiter().GetResult();
@@ -233,10 +233,12 @@ namespace Lykke.B2c2Client
                     _awaitingSubscriptions.TryRemove(instrument, out subscription);
                 }
 
-                subscription?.TaskCompletionSource.TrySetException(
-                    new B2c2WebSocketException($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}", errorResponse));
+                var exceptionMessage = $"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}";
+                var exception = MapException(errorResponse, exceptionMessage);
 
-                _log.Warning($"Failed to subscribe to {instrument}.");
+                subscription?.TaskCompletionSource.TrySetException(exception);
+
+                _log.Info($"Failed to subscribe to {instrument}.");
 
                 return;
             }
@@ -354,12 +356,10 @@ namespace Lykke.B2c2Client
                 throw new B2c2WebSocketException($"Subscription to '{instrument}' is already existed.");
         }
 
-        private void ThrowIfSubscriptionDeosNotExistOrUnsubscriptionAlreadyExists(string instrument)
+        private void ThrowIfUnsubscriptionAlreadyExists(string instrument)
         {
             lock (_sync)
             {
-                if (!_instrumentsHandlers.ContainsKey(instrument))
-                    throw new B2c2WebSocketException($"Subscription to {instrument} does not exist.");
                 if (_awaitingUnsubscriptions.ContainsKey(instrument))
                     throw new B2c2WebSocketException($"Unsubscription to '{instrument}' is already exist.");
             }
@@ -385,6 +385,15 @@ namespace Lykke.B2c2Client
         {
             if (_clientWebSocket.State == WebSocketState.None)
                 Connect(ct);
+        }
+
+        private static B2c2WebSocketException MapException(ErrorResponse errorResponse, string exceptionMessage)
+        {
+            var exception = errorResponse.Code == ErrorCode.AlreadySubscribed
+                ? new B2c2WebSocketAlreadySubscribedException(exceptionMessage, errorResponse)
+                : new B2c2WebSocketException(exceptionMessage, errorResponse);
+
+            return exception;
         }
 
         #region IDisposable

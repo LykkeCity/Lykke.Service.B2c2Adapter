@@ -107,6 +107,8 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             IReadOnlyCollection<Instrument> instruments;
 
+            _log.Info("Starting instrument initialization...");
+
             while (true)
             {
                 try
@@ -127,28 +129,91 @@ namespace Lykke.Service.B2c2Adapter.Services
                 _withWithoutSuffixMapping[instrument.Name] = withoutSpotSuffix;
                 _withoutWithSuffixMapping[withoutSpotSuffix] = instrument.Name;
             }
+
+            _log.Info($"Finished instrument initialization, total instruments: {instruments.Count}.");
         }
 
         private void SubscribeToOrderBooks()
         {
-            foreach (var instrumentLevels in _instrumentsLevels)
-            {
-                var instrument = instrumentLevels.Instrument;
-                var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
-                var levels = instrumentLevels.Levels;
+            var subscribed = 0;
+            var skipped = 0;
 
-                try
+            _log.Info("Started subscribing.");
+
+            using (var enumerator = _instrumentsLevels.GetEnumerator())
+            {
+                enumerator.MoveNext();
+
+                while (_instrumentsLevels.Count > subscribed + skipped)
                 {
-                    _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync).GetAwaiter().GetResult();
-                }
-                catch (Exception e)
-                {
-                    _log.Info("Error occured during subscription.", exception: e);
-                    return;
+                    var instrumentLevels = enumerator.Current;
+                    var instrument = instrumentLevels.Instrument;
+
+                    if (_withWithoutSuffixMapping.ContainsKey(instrument))
+                    {
+                        _log.Warning($"Didn't find instrument {instrument}.");
+                        skipped++;
+                        enumerator.MoveNext();
+                    }
+
+                    var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
+                    var levels = instrumentLevels.Levels;
+                    
+                    // Trying to subscribe to an instrument
+                    try
+                    {
+                        _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync).GetAwaiter().GetResult();
+
+                        // Successfully subscribed
+                        subscribed++;
+                        enumerator.MoveNext();
+                    }
+                    catch (TimeoutException e)
+                    {
+                        _log.Info($"Timeout. Skipped subscribing to {instrument}.", exception: e);
+
+                        // Stop subscribing if timeout
+                        return;
+                    }
+                    catch (B2c2WebSocketAlreadySubscribedException e)
+                    {
+                        _log.Info($"Already subscribed to {instrument} exception", exception: e);
+
+                        // Try again if successfully unsubscribed after 'already subscribed'
+                        if (HandleAlreadySubscribedException())
+                            continue;
+                        
+                        // Stop subscribing if could not unsubscribe after 'already subscribed'
+                        return;
+                    }
+                    catch (Exception e)
+                    {
+                        _log.Info($"Error occured during subscription to {instrument}.", exception: e);
+
+                        // Skip instrument if any other exception
+                        skipped++;
+                        enumerator.MoveNext();
+                    }
+
+                    bool HandleAlreadySubscribedException()
+                    {
+                        try
+                        {
+                            _b2C2WebSocketClient.UnsubscribeAsync(instrumentWithSuffix).GetAwaiter().GetResult();
+                        }
+                        catch (Exception ex)
+                        {
+                            _log.Info($"Can't unsubscribe from {instrument}.", exception: ex);
+
+                            return false;
+                        }
+
+                        return true;
+                    }
                 }
             }
 
-            _log.Info("Subscribed.");
+            _log.Info("Finished subscribing.");
         }
 
         private async Task HandleAsync(PriceMessage message)
@@ -194,14 +259,11 @@ namespace Lykke.Service.B2c2Adapter.Services
             var isReceivedAtLeastOneOrderBookAtAll = _orderBooksCache.Values.Any();
             var isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval =
                 !_orderBooksCache.Values.Any(x => DateTime.UtcNow - x.Timestamp < _reconnectIfNeededInterval);
-            var isNotConnectedFor1MinSinceStart = _started != default(DateTime) && DateTime.UtcNow - _started > new TimeSpan(0, 0, 1, 0);
 
-            var needToReconnect = (isReceivedAtLeastOneOrderBookAtAll && isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval)
-                || (!isReceivedAtLeastOneOrderBookAtAll && isNotConnectedFor1MinSinceStart);
+            var needToReconnect = isReceivedAtLeastOneOrderBookAtAll &&
+                                  isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval;
 
-            _log.Info($"Reconnect needed: {needToReconnect}. Order books count = {_orderBooksCache.Count}, " +
-                      $"received fresh message since last check = {!isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval}, " +
-                      $"not connected for 1 min since start = {isNotConnectedFor1MinSinceStart}.");
+            _log.Info($"Need to reconnect? {needToReconnect}.");
 
             if (needToReconnect)
                 ForceReconnect();
