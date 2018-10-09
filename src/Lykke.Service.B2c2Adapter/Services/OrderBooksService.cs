@@ -164,7 +164,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                     {
                         _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync).GetAwaiter().GetResult();
 
-                        // Next instrument
+                        // Successfully subscribed
                         subscribed++;
                         enumerator.MoveNext();
                     }
@@ -179,19 +179,20 @@ namespace Lykke.Service.B2c2Adapter.Services
                     {
                         _log.Info($"Already subscribed to {instrument} exception", exception: e);
 
-                        if (!HandleAlreadySubscribedException())
-                        {
-                            // Stop subscribing if could not unsubscribe after 'already subscribed'
-                            return;
-                        }
-                        // else - Try again if successfully unsubscribed
+                        // Try again if successfully unsubscribed after 'already subscribed'
+                        if (HandleAlreadySubscribedException())
+                            continue;
+                        
+                        // Stop subscribing if could not unsubscribe after 'already subscribed'
+                        return;
                     }
                     catch (Exception e)
                     {
                         _log.Info($"Error occured during subscription to {instrument}.", exception: e);
 
-                        // Stop subscribing if any other exception
-                        return;
+                        // Skip instrument if any other exception
+                        skipped++;
+                        enumerator.MoveNext();
                     }
 
                     bool HandleAlreadySubscribedException()
