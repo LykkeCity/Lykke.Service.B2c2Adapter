@@ -238,7 +238,7 @@ namespace Lykke.B2c2Client
 
                 subscription?.TaskCompletionSource.TrySetException(exception);
 
-                _log.Warning($"Failed to subscribe to {instrument}.");
+                _log.Info($"Failed to subscribe to {instrument}.");
 
                 return;
             }

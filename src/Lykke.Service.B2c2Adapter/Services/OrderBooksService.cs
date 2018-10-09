@@ -159,7 +159,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                     var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
                     var levels = instrumentLevels.Levels;
                     
-                    // Trying to subscribe to instrument
+                    // Trying to subscribe to an instrument
                     try
                     {
                         _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync).GetAwaiter().GetResult();
@@ -181,7 +181,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
                         if (!HandleAlreadySubscribedException())
                         {
-                            // Stop subscribing if could not unsubscribe
+                            // Stop subscribing if could not unsubscribe after 'already subscribed'
                             return;
                         }
                         // else - Try again if successfully unsubscribed
