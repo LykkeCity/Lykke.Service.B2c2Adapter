@@ -67,7 +67,7 @@ namespace Lykke.B2c2Client
 
             var tag = Guid.NewGuid().ToString();
 
-            _log.Info($"Attempt to subscribe to order book updates, instrument: '{instrument}'.", tag);
+            _log.Info($"Subscribing to '{instrument}'.", tag);
 
             var subscribeRequest = new SubscribeRequest { Instrument = instrument, Levels = levels, Tag = tag };
             SendMessageToWebSocket(subscribeRequest, ct).GetAwaiter().GetResult();

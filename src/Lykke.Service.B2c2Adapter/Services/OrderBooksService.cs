@@ -144,6 +144,8 @@ namespace Lykke.Service.B2c2Adapter.Services
                 // Try to subscribe until all instruments are subscribed
                 while (true)
                 {
+
+                    _log.Info("Disposing WebSocketClient.");
                     _b2C2WebSocketClient?.Dispose();
                     _b2C2WebSocketClient = new B2С2WebSocketClient(_webSocketC2ClientSettings, _logFactory);
 
