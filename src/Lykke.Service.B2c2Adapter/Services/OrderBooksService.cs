@@ -17,7 +17,6 @@ using Lykke.Common.ExchangeAdapter.Contracts;
 using Lykke.Common.Log;
 using Lykke.Service.B2c2Adapter.RabbitPublishers;
 using Lykke.Service.B2c2Adapter.Settings;
-using ErrorCode = Lykke.B2c2Client.Models.WebSocket.ErrorCode;
 
 namespace Lykke.Service.B2c2Adapter.Services
 {
@@ -34,13 +33,11 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly B2C2ClientSettings _webSocketC2ClientSettings;
         private readonly IOrderBookPublisher _orderBookPublisher;
         private readonly ITickPricePublisher _tickPricePublisher;
-        private readonly ConcurrentDictionary<string, int> _healthCheck;
         private readonly ILogFactory _logFactory;
         private readonly ILog _log;
         private readonly object _syncReconnect = new object();
         private readonly TimeSpan _reconnectIfNeededInterval;
         private readonly TimerTrigger _reconnectIfNeededTrigger;
-        private readonly TimerTrigger _publishFromCacheTrigger;
         private readonly TimerTrigger _forceReconnectTrigger;
         private readonly OrderBooksServiceSettings _settings;
 
@@ -62,13 +59,10 @@ namespace Lykke.Service.B2c2Adapter.Services
             _orderBookPublisher = orderBookPublisher ?? throw new NullReferenceException(nameof(orderBookPublisher));
             _tickPricePublisher = tickPricePublisher ?? throw new NullReferenceException(nameof(tickPricePublisher));
             _reconnectIfNeededInterval = settings.ReconnectIfNeededInterval;
-            _healthCheck = new ConcurrentDictionary<string, int>();
             _logFactory = logFactory;
             _log = logFactory.CreateLog(this);
             _reconnectIfNeededTrigger = new TimerTrigger(nameof(OrderBooksService), settings.ReconnectIfNeededInterval, logFactory, ReconnectIfNeeded);
-            _publishFromCacheTrigger = new TimerTrigger(nameof(OrderBooksService), settings.PublishFromCacheInterval, logFactory, PublishAllFromCache);
-            if (settings.ForceReconnectInterval > TimeSpan.Zero)
-                _forceReconnectTrigger = new TimerTrigger(nameof(OrderBooksService), settings.ForceReconnectInterval, logFactory, ForceReconnect);
+            _forceReconnectTrigger = new TimerTrigger(nameof(OrderBooksService), settings.ForceReconnectInterval, logFactory, ForceReconnect);
 
             _settings = settings;
         }
@@ -79,8 +73,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             SubscribeToOrderBooks();
 
             _reconnectIfNeededTrigger.Start();
-            _publishFromCacheTrigger.Start();
-            _forceReconnectTrigger?.Start();
+            _forceReconnectTrigger.Start();
 
             ForceReconnect();
         }
@@ -230,7 +223,6 @@ namespace Lykke.Service.B2c2Adapter.Services
                 if (orderBook.Timestamp > existedOrderBook.Timestamp)
                 {
                     _orderBooksCache[instrument] = orderBook;
-                    SetHelthCheck(message);
                     await PublishOrderBookAndTickPrice(orderBook);
                 }
             }
@@ -274,25 +266,6 @@ namespace Lykke.Service.B2c2Adapter.Services
                 ForceReconnect();
 
             return Task.CompletedTask;
-        }
-
-        private async Task PublishAllFromCache(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
-        {
-            try
-            {
-                await WriteHealthCheck();
-
-                _log.Info($"Publishing {_orderBooksCache.Count} from cache...");
-
-                foreach (var orderBook in _orderBooksCache.Values)
-                    await PublishOrderBookAndTickPrice(orderBook);
-            }
-            catch (Exception ex)
-            {
-                _log.Error(ex);
-            }
-
-            _log.Info("Finished publishing from cache.");
         }
 
         private Task ForceReconnect(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
@@ -342,30 +315,12 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             return result;
         }
-
-        private void SetHelthCheck(PriceMessage result)
-        {
-            _healthCheck.AddOrUpdate(result.Instrument, 1, (key, oldValue) => oldValue + 1);
-        }
-
-        private Task WriteHealthCheck()
-        {
-            var list = _healthCheck.OrderBy(x => x.Value)
-                                   .Select(x => x.Key)
-                                   .Select(key => $"{key} : {_healthCheck[key]}")
-                                   .ToList();
-
-            _log.Info($"Health check: {Environment.NewLine}{string.Join(Environment.NewLine, list)}");
-
-            foreach (var key in _healthCheck.Keys.ToList())
-                _healthCheck[key] = 0;
-
-            return Task.CompletedTask;
-        }
-
+        
         public void Stop()
         {
-            _publishFromCacheTrigger.Stop();
+            _reconnectIfNeededTrigger.Stop();
+            _forceReconnectTrigger.Stop();
+
         }
 
         #region IDisposable
@@ -385,10 +340,16 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             if (!disposing) return;
 
-            if (_publishFromCacheTrigger != null)
+            if (_reconnectIfNeededTrigger != null)
             {
-                _publishFromCacheTrigger.Stop();
-                _publishFromCacheTrigger.Dispose();
+                _reconnectIfNeededTrigger.Stop();
+                _reconnectIfNeededTrigger.Dispose();
+            }
+
+            if (_forceReconnectTrigger != null)
+            {
+                _forceReconnectTrigger.Stop();
+                _forceReconnectTrigger.Dispose();
             }
         }
 

@@ -9,8 +9,6 @@ namespace Lykke.Service.B2c2Adapter.Settings
 
         public TimeSpan ReconnectIfNeededInterval { get; set; }
 
-        public TimeSpan PublishFromCacheInterval { get; set; }
-
         public TimeSpan ForceReconnectInterval { get; set; }
     }
 }
