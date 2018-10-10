@@ -46,7 +46,6 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         public OrderBooksService(
             IB2С2RestClient b2C2RestClient,
-            IB2С2WebSocketClient b2C2WebSocketClient,
             IOrderBookPublisher orderBookPublisher,
             ITickPricePublisher tickPricePublisher,
             OrderBooksServiceSettings settings,
@@ -59,7 +58,6 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             _instrumentsLevels = settings.InstrumentsLevels == null || !settings.InstrumentsLevels.Any() ? throw new ArgumentOutOfRangeException(nameof(_instrumentsLevels)) : settings.InstrumentsLevels;
             _b2C2RestClient = b2C2RestClient ?? throw new NullReferenceException(nameof(b2C2RestClient));
-            _b2C2WebSocketClient = b2C2WebSocketClient ?? throw new NullReferenceException(nameof(b2C2RestClient));
             _webSocketC2ClientSettings = webSocketC2ClientSettings ?? throw new NullReferenceException(nameof(webSocketC2ClientSettings));
             _orderBookPublisher = orderBookPublisher ?? throw new NullReferenceException(nameof(orderBookPublisher));
             _tickPricePublisher = tickPricePublisher ?? throw new NullReferenceException(nameof(tickPricePublisher));
@@ -83,6 +81,8 @@ namespace Lykke.Service.B2c2Adapter.Services
             _reconnectIfNeededTrigger.Start();
             _publishFromCacheTrigger.Start();
             _forceReconnectTrigger?.Start();
+
+            ForceReconnect();
         }
 
         public IReadOnlyCollection<string> GetAllInstruments()
@@ -312,7 +312,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                 {
                     _log.Info("Force reconnection...");
 
-                    _b2C2WebSocketClient.Dispose();
+                    _b2C2WebSocketClient?.Dispose();
                     _b2C2WebSocketClient = new B2С2WebSocketClient(_webSocketC2ClientSettings, _logFactory);
                     SubscribeToOrderBooks();
                 }
