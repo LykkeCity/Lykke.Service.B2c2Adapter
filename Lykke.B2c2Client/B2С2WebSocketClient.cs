@@ -23,7 +23,6 @@ namespace Lykke.B2c2Client
         private readonly string _baseUri;
         private readonly string _authorizationToken;
         private readonly ILog _log;
-        private object _syncClientWebSocket = new object();
         private ClientWebSocket _clientWebSocket;
         private readonly object _sync = new object();
         private readonly ConcurrentDictionary<string, Subscription> _awaitingSubscriptions;
@@ -150,15 +149,12 @@ namespace Lykke.B2c2Client
                     var receiveBuffer = new ArraySegment<byte>(new byte[1024]);
                     try
                     {
-                        lock (_syncClientWebSocket)
+                        WebSocketReceiveResult receiveResult;
+                        do
                         {
-                            WebSocketReceiveResult receiveResult;
-                            do
-                            {
-                                receiveResult = _clientWebSocket.ReceiveAsync(receiveBuffer, ct).GetAwaiter().GetResult();
-                                stream.WriteAsync(receiveBuffer.Array, receiveBuffer.Offset, receiveResult.Count, ct).GetAwaiter().GetResult();
-                            } while (!receiveResult.EndOfMessage);
-                        }
+                            receiveResult = _clientWebSocket.ReceiveAsync(receiveBuffer, ct).GetAwaiter().GetResult();
+                            stream.WriteAsync(receiveBuffer.Array, receiveBuffer.Offset, receiveResult.Count, ct).GetAwaiter().GetResult();
+                        } while (!receiveResult.EndOfMessage);
 
                         var messageBytes = stream.ToArray();
                         var jsonMessage = Encoding.UTF8.GetString(messageBytes, 0, messageBytes.Length);
@@ -371,11 +367,8 @@ namespace Lykke.B2c2Client
         {
             try
             {
-                lock (_syncClientWebSocket)
-                {
-                    var requestSegment = StringToArraySegment(JsonConvert.SerializeObject(request));
-                    _clientWebSocket.SendAsync(requestSegment, WebSocketMessageType.Text, true, ct).GetAwaiter().GetResult();
-                }
+                var requestSegment = StringToArraySegment(JsonConvert.SerializeObject(request));
+                _clientWebSocket.SendAsync(requestSegment, WebSocketMessageType.Text, true, ct).GetAwaiter().GetResult();
             }
             catch (Exception e)
             {
