@@ -48,7 +48,6 @@ namespace Lykke.Service.B2c2Adapter.Modules
             {
                 InstrumentsLevels = _settings.InstrumentLevels,
                 ReconnectIfNeededInterval = _settings.ReconnectIfNeededInterval,
-                PublishFromCacheInterval = _settings.PublishFromCacheInterval,
                 ForceReconnectInterval = _settings.ForceReconnectInterval
             };
             builder.RegisterType<OrderBooksService>()

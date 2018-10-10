@@ -9,7 +9,6 @@ using Autofac;
 using Common;
 using Common.Log;
 using Lykke.B2c2Client;
-using Lykke.B2c2Client.Exceptions;
 using Lykke.B2c2Client.Models.Rest;
 using Lykke.B2c2Client.Models.WebSocket;
 using Lykke.B2c2Client.Settings;
@@ -54,13 +53,17 @@ namespace Lykke.Service.B2c2Adapter.Services
             _orderBooksCache = new ConcurrentDictionary<string, OrderBook>();
 
             _instrumentsLevels = settings.InstrumentsLevels == null || !settings.InstrumentsLevels.Any() ? throw new ArgumentOutOfRangeException(nameof(_instrumentsLevels)) : settings.InstrumentsLevels;
+
             _b2C2RestClient = b2C2RestClient ?? throw new NullReferenceException(nameof(b2C2RestClient));
             _webSocketC2ClientSettings = webSocketC2ClientSettings ?? throw new NullReferenceException(nameof(webSocketC2ClientSettings));
+
             _orderBookPublisher = orderBookPublisher ?? throw new NullReferenceException(nameof(orderBookPublisher));
             _tickPricePublisher = tickPricePublisher ?? throw new NullReferenceException(nameof(tickPricePublisher));
-            _reconnectIfNeededInterval = settings.ReconnectIfNeededInterval;
+
             _logFactory = logFactory;
             _log = logFactory.CreateLog(this);
+
+            _reconnectIfNeededInterval = settings.ReconnectIfNeededInterval;
             _reconnectIfNeededTrigger = new TimerTrigger(nameof(OrderBooksService), settings.ReconnectIfNeededInterval, logFactory, ReconnectIfNeeded);
             _forceReconnectTrigger = new TimerTrigger(nameof(OrderBooksService), settings.ForceReconnectInterval, logFactory, ForceReconnect);
 
@@ -70,7 +73,6 @@ namespace Lykke.Service.B2c2Adapter.Services
         public void Start()
         {
             InitializeAssetPairs();
-            SubscribeToOrderBooks();
 
             _reconnectIfNeededTrigger.Start();
             _forceReconnectTrigger.Start();
@@ -131,83 +133,40 @@ namespace Lykke.Service.B2c2Adapter.Services
             _log.Info($"Finished instrument initialization, total instruments: {instruments.Count}.");
         }
 
-        private void SubscribeToOrderBooks()
+        private void ForceReconnect()
         {
-            var subscribed = 0;
-            var skipped = 0;
-
             _log.Info("Started subscribing.");
 
-            using (var enumerator = _instrumentsLevels.GetEnumerator())
+            var tasks = new List<Task>();
+
+            lock (_syncReconnect)
             {
-                enumerator.MoveNext();
-
-                while (_instrumentsLevels.Count > subscribed + skipped)
+                // Try to subscribe until all instruments are subscribed
+                while (true)
                 {
-                    var instrumentLevels = enumerator.Current;
-                    var instrument = instrumentLevels.Instrument;
+                    _b2C2WebSocketClient?.Dispose();
+                    _b2C2WebSocketClient = new B2С2WebSocketClient(_webSocketC2ClientSettings, _logFactory);
 
-                    if (_withWithoutSuffixMapping.ContainsKey(instrument))
+                    // Subscribing
+                    foreach (var instrumentLevels in _instrumentsLevels)
                     {
-                        _log.Warning($"Didn't find instrument {instrument}.");
-                        skipped++;
-                        enumerator.MoveNext();
+                        var instrument = instrumentLevels.Instrument;
+                        var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
+                        var levels = instrumentLevels.Levels;
+
+                        var task = _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync)
+                            .ContinueWith(x =>
+                            {
+                                if (x.Exception != null)
+                                    _log.Info($"Exception while subscribing to {instrument}.", exception: x.Exception.InnerException);
+                            });
+
+                        tasks.Add(task);
                     }
 
-                    var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
-                    var levels = instrumentLevels.Levels;
-                    
-                    // Trying to subscribe to an instrument
-                    try
-                    {
-                        _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync).GetAwaiter().GetResult();
-
-                        // Successfully subscribed
-                        subscribed++;
-                        enumerator.MoveNext();
-                    }
-                    catch (TimeoutException e)
-                    {
-                        _log.Info($"Timeout. Skipped subscribing to {instrument}.", exception: e);
-
-                        // Stop subscribing if timeout
-                        return;
-                    }
-                    catch (B2c2WebSocketAlreadySubscribedException e)
-                    {
-                        _log.Info($"Already subscribed to {instrument} exception", exception: e);
-
-                        // Try again if successfully unsubscribed after 'already subscribed'
-                        if (HandleAlreadySubscribedException())
-                            continue;
-                        
-                        // Stop subscribing if could not unsubscribe after 'already subscribed'
-                        return;
-                    }
-                    catch (Exception e)
-                    {
-                        _log.Info($"Error occured during subscription to {instrument}.", exception: e);
-
-                        // Skip instrument if any other exception
-                        skipped++;
-                        enumerator.MoveNext();
-                    }
-
-                    bool HandleAlreadySubscribedException()
-                    {
-                        try
-                        {
-                            _b2C2WebSocketClient.UnsubscribeAsync(instrumentWithSuffix).GetAwaiter().GetResult();
-                        }
-                        catch (Exception ex)
-                        {
-                            _log.Info($"Can't unsubscribe from {instrument}.", exception: ex);
-
-                            return false;
-                        }
-
-                        return true;
-                    }
+                    var allSubscribed = Task.WaitAll(tasks.ToArray(), 10 * 1000);
+                    if (allSubscribed)
+                        break;
                 }
             }
 
@@ -254,11 +213,11 @@ namespace Lykke.Service.B2c2Adapter.Services
         private Task ReconnectIfNeeded(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
         {
             var isReceivedAtLeastOneOrderBookAtAll = _orderBooksCache.Values.Any();
-            var isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval =
-                !_orderBooksCache.Values.Any(x => DateTime.UtcNow - x.Timestamp < _reconnectIfNeededInterval);
+            var haveAtLeastOneStaleOrderBookFromTheLastCheck =
+                _orderBooksCache.Values.Any(x => DateTime.UtcNow - x.Timestamp > _reconnectIfNeededInterval);
 
             var needToReconnect = isReceivedAtLeastOneOrderBookAtAll &&
-                                  isNotReceivedAtLeastOneFreshOrderBookForTheLastInterval;
+                                  haveAtLeastOneStaleOrderBookFromTheLastCheck;
 
             _log.Info($"Need to reconnect? {needToReconnect}.");
 
@@ -275,27 +234,6 @@ namespace Lykke.Service.B2c2Adapter.Services
             ForceReconnect();
 
             return Task.CompletedTask;
-        }
-
-        private void ForceReconnect()
-        {
-            try
-            {
-                lock (_syncReconnect)
-                {
-                    _log.Info("Force reconnection...");
-
-                    _b2C2WebSocketClient?.Dispose();
-                    _b2C2WebSocketClient = new B2С2WebSocketClient(_webSocketC2ClientSettings, _logFactory);
-                    SubscribeToOrderBooks();
-                }
-            }
-            catch (Exception ex)
-            {
-                _log.Error(ex);
-            }
-
-            _log.Info("Finished reconnection.");
         }
 
         private async Task PublishOrderBookAndTickPrice(OrderBook orderBook)
