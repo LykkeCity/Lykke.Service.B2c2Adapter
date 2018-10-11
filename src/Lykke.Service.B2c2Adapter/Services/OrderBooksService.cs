@@ -218,7 +218,9 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             var needToReconnect = hasAny && hasStale;
 
-            _log.Info($"Need to reconnect? {needToReconnect}.");
+            var oldest = _orderBooksCache.Values.OrderBy(x => x.Timestamp).FirstOrDefault();
+            var oldestInstrument = oldest != null ? $"Oldest instrument: {oldest.Asset} - {oldest.Timestamp}." : "";
+            _log.Info($"Need to reconnect? {needToReconnect}. {oldestInstrument}");
 
             if (needToReconnect)
                 ForceReconnect();
