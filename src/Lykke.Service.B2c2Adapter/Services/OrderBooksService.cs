@@ -135,39 +135,25 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private void ForceReconnect()
         {
-            _log.Info("Started subscribing.");
-
-            var tasks = new List<Task>();
-
             lock (_syncReconnect)
             {
-                // Try to subscribe until all instruments are subscribed
-                while (true)
+                _log.Info("Disposing WebSocketClient.");
+                _b2C2WebSocketClient?.Dispose();
+                _b2C2WebSocketClient = new B2С2WebSocketClient(_webSocketC2ClientSettings, _logFactory);
+
+                _log.Info("Started subscribing.");
+                foreach (var instrumentLevels in _instrumentsLevels)
                 {
-                    _log.Info("Disposing WebSocketClient.");
-                    _b2C2WebSocketClient?.Dispose();
-                    _b2C2WebSocketClient = new B2С2WebSocketClient(_webSocketC2ClientSettings, _logFactory);
+                    var instrument = instrumentLevels.Instrument;
+                    var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
+                    var levels = instrumentLevels.Levels;
 
-                    // Subscribing
-                    foreach (var instrumentLevels in _instrumentsLevels)
-                    {
-                        var instrument = instrumentLevels.Instrument;
-                        var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
-                        var levels = instrumentLevels.Levels;
-
-                        var task = _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync)
-                            .ContinueWith(x =>
-                            {
-                                if (x.Exception != null)
-                                    _log.Info($"Exception while subscribing to {instrument}.", exception: x.Exception.InnerException);
-                            });
-
-                        tasks.Add(task);
-                    }
-
-                    var allSubscribed = Task.WaitAll(tasks.ToArray(), 10 * 1000);
-                    if (allSubscribed)
-                        break;
+                    _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync)
+                        .ContinueWith(x =>
+                        {
+                            if (x.Exception != null)
+                                _log.Info($"Exception while subscribing to {instrument}.", exception: x.Exception.InnerException);
+                        });
                 }
             }
 
