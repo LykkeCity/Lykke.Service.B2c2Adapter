@@ -19,7 +19,7 @@ namespace Lykke.B2c2Client
 {
     public class B2С2WebSocketClient : IB2С2WebSocketClient
     {
-        private readonly TimeSpan _timeOut = new TimeSpan(0, 0, 0, 10);
+        private readonly TimeSpan _timeOut = new TimeSpan(0, 0, 0, 5);
         private readonly string _baseUri;
         private readonly string _authorizationToken;
         private readonly ILog _log;
@@ -32,7 +32,7 @@ namespace Lykke.B2c2Client
 
         private readonly CancellationTokenSource _cancellationTokenSource;
 
-        public B2С2WebSocketClient(B2C2ClientSettings settings, ILogFactory logFactory)
+        public B2С2WebSocketClient(B2C2ClientSettings settings, ILogFactory logFactory, TimeSpan? timeOut = null)
         {
             if (settings == null) throw new NullReferenceException(nameof(settings));
             var url = settings.Url;
@@ -41,6 +41,7 @@ namespace Lykke.B2c2Client
                 throw new ArgumentOutOfRangeException(nameof(url));
             if (string.IsNullOrWhiteSpace(authorizationToken)) throw new ArgumentOutOfRangeException(nameof(authorizationToken));
             if (logFactory == null) throw new NullReferenceException(nameof(logFactory));
+            if (timeOut.HasValue) _timeOut = timeOut.Value;
 
             _baseUri = url[url.Length-1] == '/' ? url.Substring(0, url.Length - 1) : url;
             _authorizationToken = authorizationToken;
@@ -61,11 +62,11 @@ namespace Lykke.B2c2Client
             ConnectIfNeeded(ct);
 
             if (_clientWebSocket.State != WebSocketState.Open)
-                throw new B2c2WebSocketException($"State is not open: {_clientWebSocket.State}", new ErrorResponse { Code = ErrorCode.ConnectivityIssues });
+                return Task.FromException(new B2c2WebSocketException($"State is not 'Open': {_clientWebSocket.State}"));
 
             var tag = Guid.NewGuid().ToString();
 
-            _log.Info($"Attempt to subscribe to order book updates, instrument: '{instrument}'.", tag);
+            _log.Info($"Subscribing to '{instrument}'.", tag);
 
             var subscribeRequest = new SubscribeRequest { Instrument = instrument, Levels = levels, Tag = tag };
             SendMessageToWebSocket(subscribeRequest, ct).GetAwaiter().GetResult();
@@ -81,7 +82,7 @@ namespace Lykke.B2c2Client
 
             if (successTask != taskCompletionSource.Task)
             {
-                throw new TimeoutException($"Subscription timeout for {instrument}.");
+                return Task.FromException(new TimeoutException($"Subscription timeout for {instrument}."));
             }
 
             return taskCompletionSource.Task;
@@ -111,7 +112,7 @@ namespace Lykke.B2c2Client
 
             if (successTask != taskCompletionSource.Task)
             {
-                throw new B2c2WebSocketException($"Unsubscription timeout for {instrument}.");
+                return Task.FromException(new TimeoutException($"Unsubscription timeout for {instrument}."));
             }
 
             return taskCompletionSource.Task;
@@ -233,10 +234,7 @@ namespace Lykke.B2c2Client
                     _awaitingSubscriptions.TryRemove(instrument, out subscription);
                 }
 
-                var exceptionMessage = $"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}";
-                var exception = MapException(errorResponse, exceptionMessage);
-
-                subscription?.TaskCompletionSource.TrySetException(exception);
+                subscription?.TaskCompletionSource.TrySetException(new B2c2WebSocketException($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}", errorResponse));
 
                 _log.Info($"Failed to subscribe to {instrument}.");
 
@@ -370,7 +368,7 @@ namespace Lykke.B2c2Client
             try
             {
                 var requestSegment = StringToArraySegment(JsonConvert.SerializeObject(request));
-                _clientWebSocket.SendAsync(requestSegment, WebSocketMessageType.Text, true, ct).ConfigureAwait(false).GetAwaiter().GetResult();
+                _clientWebSocket.SendAsync(requestSegment, WebSocketMessageType.Text, true, ct).GetAwaiter().GetResult();
             }
             catch (Exception e)
             {
@@ -385,15 +383,6 @@ namespace Lykke.B2c2Client
         {
             if (_clientWebSocket.State == WebSocketState.None)
                 Connect(ct);
-        }
-
-        private static B2c2WebSocketException MapException(ErrorResponse errorResponse, string exceptionMessage)
-        {
-            var exception = errorResponse.Code == ErrorCode.AlreadySubscribed
-                ? new B2c2WebSocketAlreadySubscribedException(exceptionMessage, errorResponse)
-                : new B2c2WebSocketException(exceptionMessage, errorResponse);
-
-            return exception;
         }
 
         #region IDisposable
