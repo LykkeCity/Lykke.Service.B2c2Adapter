@@ -213,12 +213,10 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private Task ReconnectIfNeeded(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
         {
-            var isReceivedAtLeastOneOrderBookAtAll = _orderBooksCache.Values.Any();
-            var haveAtLeastOneStaleOrderBookFromTheLastCheck =
-                _orderBooksCache.Values.Any(x => DateTime.UtcNow - x.Timestamp > _reconnectIfNeededInterval);
+            var hasAny = _orderBooksCache.Values.Any();
+            var hasStale = _orderBooksCache.Values.Any(IsStale);
 
-            var needToReconnect = isReceivedAtLeastOneOrderBookAtAll &&
-                                  haveAtLeastOneStaleOrderBookFromTheLastCheck;
+            var needToReconnect = hasAny && hasStale;
 
             _log.Info($"Need to reconnect? {needToReconnect}.");
 
@@ -239,6 +237,13 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private async Task PublishOrderBookAndTickPrice(OrderBook orderBook)
         {
+            if (IsStale(orderBook))
+            {
+                _log.Info($"Stale: '{orderBook.Asset}'.");
+
+                return;
+            }
+
             await _orderBookPublisher.PublishAsync(orderBook);
 
             var tickPrice = TickPrice.FromOrderBook(orderBook);
@@ -254,7 +259,12 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             return result;
         }
-        
+
+        private bool IsStale(OrderBook orderBook)
+        {
+            return DateTime.UtcNow - orderBook.Timestamp > _reconnectIfNeededInterval;
+        }
+
         public void Stop()
         {
             _reconnectIfNeededTrigger.Stop();
