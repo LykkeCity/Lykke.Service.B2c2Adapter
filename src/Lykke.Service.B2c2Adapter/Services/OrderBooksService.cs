@@ -133,33 +133,6 @@ namespace Lykke.Service.B2c2Adapter.Services
             _log.Info($"Finished instrument initialization, total instruments: {instruments.Count}.");
         }
 
-        private void ForceReconnect()
-        {
-            lock (_syncReconnect)
-            {
-                _log.Info("Disposing WebSocketClient.");
-                _b2C2WebSocketClient?.Dispose();
-                _b2C2WebSocketClient = new B2С2WebSocketClient(_webSocketC2ClientSettings, _logFactory);
-
-                _log.Info("Started subscribing.");
-                foreach (var instrumentLevels in _instrumentsLevels)
-                {
-                    var instrument = instrumentLevels.Instrument;
-                    var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
-                    var levels = instrumentLevels.Levels;
-
-                    _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync)
-                        .ContinueWith(x =>
-                        {
-                            if (x.Exception != null)
-                                _log.Info($"Exception while subscribing to {instrument}.", exception: x.Exception.InnerException);
-                        });
-                }
-            }
-
-            _log.Info("Finished subscribing.");
-        }
-
         private async Task HandleAsync(PriceMessage message)
         {
             var orderBook = Convert(message);
@@ -197,7 +170,19 @@ namespace Lykke.Service.B2c2Adapter.Services
             return result;
         }
 
-        private Task ReconnectIfNeeded(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
+        private async Task ReconnectIfNeeded(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
+        {
+            try
+            {
+                await ReconnectIfNeeded();
+            }
+            catch (Exception e)
+            {
+                _log.Info("Error during ReconnectIfNeeded.", exception: e);
+            }
+        }
+
+        private async Task ReconnectIfNeeded()
         {
             var hasAny = _orderBooksCache.Values.Any();
             var hasStale = _orderBooksCache.Values.Any(IsStale);
@@ -210,17 +195,47 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             if (needToReconnect)
                 ForceReconnect();
-
-            return Task.CompletedTask;
         }
 
-        private Task ForceReconnect(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
+        private async Task ForceReconnect(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
         {
             _log.Info("Force reconnect by timer.");
 
-            ForceReconnect();
+            try
+            {
+                ForceReconnect();
+            }
+            catch (Exception e)
+            {
+                _log.Info("Error during ForceReconnect.", exception: e);
+            }
+        }
 
-            return Task.CompletedTask;
+        private void ForceReconnect()
+        {
+            lock (_syncReconnect)
+            {
+                _log.Info("Disposing WebSocketClient.");
+                _b2C2WebSocketClient?.Dispose();
+                _b2C2WebSocketClient = new B2С2WebSocketClient(_webSocketC2ClientSettings, _logFactory);
+
+                _log.Info("Started subscribing.");
+                foreach (var instrumentLevels in _instrumentsLevels)
+                {
+                    var instrument = instrumentLevels.Instrument;
+                    var instrumentWithSuffix = _withoutWithSuffixMapping[instrument];
+                    var levels = instrumentLevels.Levels;
+
+                    _b2C2WebSocketClient.SubscribeAsync(instrumentWithSuffix, levels, HandleAsync)
+                        .ContinueWith(x =>
+                        {
+                            if (x.Exception != null)
+                                _log.Info($"Exception while subscribing to {instrument}.", exception: x.Exception.InnerException);
+                        });
+                }
+            }
+
+            _log.Info("Finished subscribing.");
         }
 
         private async Task PublishOrderBookAndTickPrice(OrderBook orderBook)
