@@ -1,9 +1,11 @@
 ﻿using Autofac;
-using Common;
+using Autofac.Core.NonPublicProperty;
 using JetBrains.Annotations;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Settings;
-using Lykke.Service.B2c2Adapter.RabbitPublishers;
+using Lykke.Sdk;
+using Lykke.Service.B2c2Adapter.Managers;
+using Lykke.Service.B2c2Adapter.RabbitMq.Publishers;
 using Lykke.Service.B2c2Adapter.Services;
 using Lykke.Service.B2c2Adapter.Settings;
 using Lykke.SettingsReader;
@@ -26,20 +28,24 @@ namespace Lykke.Service.B2c2Adapter.Modules
         {
             var webSocketSettings = new B2C2ClientSettings(_settings.WebSocketUrl, _settings.AuthorizationToken);
 
-            // B2C2 Client Lybrary
+            builder.RegisterType<Manager>()
+                .As<IStartupManager>()
+                .As<IShutdownManager>()
+                .AutoWireNonPublicProperties();
+
+            // B2C2 Client Library
             builder.RegisterB2С2RestClient(new B2C2ClientSettings(_settings.RestUrl, _settings.AuthorizationToken));
 
             // Publishers
             builder.RegisterType<OrderBookPublisher>()
+                .AsSelf()
                 .As<IOrderBookPublisher>()
-                .As<IStartable>()
-                .As<IStopable>()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.RabbitMq.OrderBooks));
+
             builder.RegisterType<TickPricePublisher>()
+                .AsSelf()
                 .As<ITickPricePublisher>()
-                .As<IStartable>()
-                .As<IStopable>()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.RabbitMq.TickPrices));
 
@@ -50,10 +56,9 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 ReconnectIfNeededInterval = _settings.ReconnectIfNeededInterval,
                 ForceReconnectInterval = _settings.ForceReconnectInterval
             };
+
             builder.RegisterType<OrderBooksService>()
                 .AsSelf()
-                .As<IStartable>()
-                .As<IStopable>()
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(orderBooksServiceSettings))
                 .WithParameter(TypedParameter.From(webSocketSettings));
