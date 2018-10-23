@@ -7,7 +7,7 @@ using Lykke.RabbitMqBroker.Publisher;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Service.B2c2Adapter.Settings;
 
-namespace Lykke.Service.B2c2Adapter.RabbitPublishers
+namespace Lykke.Service.B2c2Adapter.RabbitMq.Publishers
 {
     public class TickPricePublisher : ITickPricePublisher, IStartable, IStopable
     {

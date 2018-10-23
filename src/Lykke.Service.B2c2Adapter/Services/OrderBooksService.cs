@@ -14,7 +14,7 @@ using Lykke.B2c2Client.Models.WebSocket;
 using Lykke.B2c2Client.Settings;
 using Lykke.Common.ExchangeAdapter.Contracts;
 using Lykke.Common.Log;
-using Lykke.Service.B2c2Adapter.RabbitPublishers;
+using Lykke.Service.B2c2Adapter.RabbitMq.Publishers;
 using Lykke.Service.B2c2Adapter.Settings;
 
 namespace Lykke.Service.B2c2Adapter.Services
@@ -72,12 +72,19 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         public void Start()
         {
+            Task.Run(StartAsync);
+        }
+
+        public Task StartAsync()
+        {
             InitializeAssetPairs();
 
             _reconnectIfNeededTrigger.Start();
             _forceReconnectTrigger.Start();
 
             ForceReconnect();
+
+            return Task.CompletedTask;
         }
 
         public IReadOnlyCollection<string> GetAllInstruments()
