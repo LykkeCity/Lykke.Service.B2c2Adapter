@@ -195,12 +195,12 @@ namespace Lykke.B2c2Client
 
             try
             {
-                using (var response = await _client.GetAsync("trade/", ct))
+                using (var response = await _client.GetAsync($"trade/?offset={offset}&limit={limit}", ct))
                 {
                     var status = response.StatusCode;
 
                     var responseStr = await response.Content.ReadAsStringAsync();
-                    _log.Info($"trade history - response: {responseStr}", requestId);
+                    _log.Info("trade history - response", requestId);
 
                     CheckForError(responseStr, status, requestId);
 

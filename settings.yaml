@@ -30,6 +30,9 @@ B2c2AdapterService:
         ReportSqlConnString:
             settings-key: ReportSqlConnString
 
+    EnableExportToReportDb:
+        settings-key: B2C2AdapterService-EnableExportToReportDb
+
     RabbitMq:
         OrderBooks:
             Enabled:

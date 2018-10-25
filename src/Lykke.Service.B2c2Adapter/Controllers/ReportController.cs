@@ -16,8 +16,8 @@ namespace Lykke.Service.B2c2Adapter.Controllers
             _reportService = reportService;
         }
 
-        [SwaggerOperation("GetSettings")]
-        [HttpGet]
+        [SwaggerOperation("ReloadTradeHistory")]
+        [HttpPost("reloadtrades")]
         [ProducesResponseType(typeof(int), (int) HttpStatusCode.OK)]
         public Task<int> ReloadTradeHistory()
         {

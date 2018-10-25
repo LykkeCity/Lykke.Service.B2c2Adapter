@@ -72,7 +72,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         public void Start()
         {
-            Task.Run(StartAsync);
+            //Task.Run(StartAsync);
         }
 
         public Task StartAsync()

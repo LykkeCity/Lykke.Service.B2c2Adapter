@@ -65,7 +65,8 @@ namespace Lykke.Service.B2c2Adapter.Modules
 
             builder.RegisterType<ReportService>()
                 .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.Db.ReportSqlConnString));
+                .WithParameter(TypedParameter.From(_settings.Db.ReportSqlConnString))
+                .WithParameter(TypedParameter.From(_settings.EnableExportToReportDb));
         }
     }
 }
