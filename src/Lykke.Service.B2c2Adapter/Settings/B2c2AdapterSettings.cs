@@ -21,6 +21,8 @@ namespace Lykke.Service.B2c2Adapter.Settings
 
         public DbSettings Db { get; set; }
 
+        public bool EnableExportToReportDb { get; set; }
+
         public RabbitMqSettings RabbitMq { get; set; }
     }
 }

@@ -6,5 +6,7 @@ namespace Lykke.Service.B2c2Adapter.Settings
     {
         [AzureTableCheck]
         public string LogsConnString { get; set; }
+
+        public string ReportSqlConnString { get; set; }
     }
 }

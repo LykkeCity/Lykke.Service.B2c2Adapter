@@ -59,7 +59,14 @@ namespace Lykke.B2c2Client
         {
             ThrowIfSubscriptionIsAlreadyExist(instrument);
 
-            ConnectIfNeeded(ct);
+            try
+            {
+                ConnectIfNeeded(ct);
+            }
+            catch (Exception e)
+            {
+                return Task.FromException(e);
+            }
 
             if (_clientWebSocket.State != WebSocketState.Open)
                 return Task.FromException(new B2c2WebSocketException($"State is not 'Open': {_clientWebSocket.State}"));
@@ -123,10 +130,8 @@ namespace Lykke.B2c2Client
             _log.Info("Attempt to establish a WebSocket connection.");
 
             _clientWebSocket.Options.SetRequestHeader("Authorization", $"Token {_authorizationToken}");
-            _clientWebSocket.ConnectAsync(new Uri($"{_baseUri}/quotes"), ct).ConfigureAwait(false).GetAwaiter().GetResult();
 
-            if (_clientWebSocket.State != WebSocketState.Open)
-                throw new Exception($"Could not establish WebSocket connection to {_baseUri}.");
+            TryConnect(ct).GetAwaiter().GetResult();
 
             // Listen for messages in separate io thread
             Task.Run(async () =>
@@ -139,7 +144,24 @@ namespace Lykke.B2c2Client
                         _log.Error(t.Exception, "Something went wrong in subscription thread.");
                 }, default(CancellationToken));
         }
-        
+
+        private async Task<bool> TryConnect(CancellationToken ct)
+        {
+            try
+            {
+                await _clientWebSocket.ConnectAsync(new Uri($"{_baseUri}/quotes"), ct).ConfigureAwait(false);
+            }
+            catch (WebSocketException e)
+            {
+                _log.Warning($"Could not establish WebSocket connection to {_baseUri}.");
+            }
+
+            if (_clientWebSocket.State == WebSocketState.Open)
+                return true;
+
+            return false;
+        }
+
         private Task HandleMessagesCycleAsync(CancellationToken ct)
         {
             while (_clientWebSocket?.State == WebSocketState.Open)
@@ -202,7 +224,7 @@ namespace Lykke.B2c2Client
             }
             catch (Exception e)
             {
-                _log.Error(e, $"Type: {type}, message: {jToken}.");
+                _log.Warning($"Type: {type}, message: {jToken}.", e);
             }
         }
 
