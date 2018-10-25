@@ -15,22 +15,22 @@ namespace Lykke.B2c2Client
 {
     public class B2С2RestClient : IB2С2RestClient
     {
+        private readonly HttpClient _httpClient;
         private readonly ILog _log;
-        private readonly HttpClient _client;
 
         public B2С2RestClient(B2C2ClientSettings settings, ILogFactory logFactory)
         {
             if (settings == null) throw new NullReferenceException(nameof(settings));
             var url = settings.Url;
             var authorizationToken = settings.AuthorizationToken;
-            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out _))
                 throw new ArgumentOutOfRangeException(nameof(url));
             if (string.IsNullOrWhiteSpace(authorizationToken)) throw new ArgumentOutOfRangeException(nameof(authorizationToken));
             if (logFactory == null) throw new NullReferenceException(nameof(logFactory));
 
             url = url[url.Length - 1] == '/' ? url.Substring(0, url.Length - 1) : url;
-            _client = new HttpClient { BaseAddress = new Uri(url) };
-            _client.DefaultRequestHeaders.Add("Authorization", $"Token {authorizationToken}");
+            _httpClient = new HttpClient { BaseAddress = new Uri(url) };
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Token {authorizationToken}");
             _log = logFactory.CreateLog(this);
         }
 
@@ -41,7 +41,7 @@ namespace Lykke.B2c2Client
 
             try
             {
-                using (var response = await _client.GetAsync("balance/", ct))
+                using (var response = await _httpClient.GetAsync("balance/", ct))
                 {
                     var status = response.StatusCode;
                     
@@ -69,7 +69,7 @@ namespace Lykke.B2c2Client
 
             try
             {
-                using (var response = await _client.GetAsync("instruments/", ct))
+                using (var response = await _httpClient.GetAsync("instruments/", ct))
                 {
                     var status = response.StatusCode;
 
@@ -99,7 +99,7 @@ namespace Lykke.B2c2Client
 
             try
             {
-                using (var response = await _client.PostAsJsonAsync("request_for_quote/", requestForQuoteRequest, ct))
+                using (var response = await _httpClient.PostAsJsonAsync("request_for_quote/", requestForQuoteRequest, ct))
                 {
                     var status = response.StatusCode;
 
@@ -133,7 +133,7 @@ namespace Lykke.B2c2Client
 
             try
             {
-                using (var response = await _client.PostAsJsonAsync("order/", orderRequest, ct))
+                using (var response = await _httpClient.PostAsJsonAsync("order/", orderRequest, ct))
                 {
                     var status = response.StatusCode;
 
@@ -167,7 +167,7 @@ namespace Lykke.B2c2Client
 
             try
             {
-                using (var response = await _client.PostAsJsonAsync("trade/", tradeRequest, ct))
+                using (var response = await _httpClient.PostAsJsonAsync("trade/", tradeRequest, ct))
                 {
                     var status = response.StatusCode;
 
@@ -195,7 +195,7 @@ namespace Lykke.B2c2Client
 
             try
             {
-                using (var response = await _client.GetAsync($"trade/?offset={offset}&limit={limit}", ct))
+                using (var response = await _httpClient.GetAsync($"trade/?offset={offset}&limit={limit}", ct))
                 {
                     var status = response.StatusCode;
 
@@ -218,22 +218,27 @@ namespace Lykke.B2c2Client
 
         private void CheckForError(string response, HttpStatusCode status, Guid guid)
         {
-            if (response.Contains("errors"))
-            {
-                ErrorResponse errorResponse;
-                try
-                {
-                    errorResponse = JsonConvert.DeserializeObject<ErrorResponse>(response);
-                    errorResponse.Status = status;
-                }
-                catch (Exception e)
-                {
-                    var message = $"Can't deserialize error response, status: {(int)status} {status.ToString()}, guid: {guid}, response: {response}";
-                    throw new B2c2RestException(message, e, guid);
-                }
+            if (!response.Contains("errors"))
+                return;
 
-                throw new B2c2RestException(errorResponse, guid);
+            ErrorResponse errorResponse;
+            try
+            {
+                errorResponse = JsonConvert.DeserializeObject<ErrorResponse>(response);
+                errorResponse.Status = status;
             }
+            catch (Exception e)
+            {
+                var message = $"Can't deserialize error response, status: {(int)status} {status.ToString()}, guid: {guid}, response: {response}";
+                throw new B2c2RestException(message, e, guid);
+            }
+
+            throw new B2c2RestException(errorResponse, guid);
+        }
+
+        public void Dispose()
+        {
+            _httpClient?.Dispose();
         }
     }
 }

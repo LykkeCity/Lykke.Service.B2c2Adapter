@@ -10,40 +10,30 @@ namespace Lykke.Service.B2c2Adapter.Tests
     public class RestClientTests
     {
         private const string Url = "https://sandboxapi.b2c2.net/";
-        private const string Token = "1bbe66d9dda462f37e7159c091e86994593b88d5";
-        private readonly B2С2RestClient _restClient = new B2С2RestClient(new B2C2ClientSettings(Url, Token), LogFactory.Create());
-        private const bool IsLocal = false;
+        private const string Token = "";
+        private readonly IB2С2RestClient _restClient = new B2С2RestClient(new B2C2ClientSettings(Url, Token), LogFactory.Create());
 
-        [Fact]
+        //[Fact]
         public async void InstrumentsTest()
         {
-            if (!IsLocal)
-                return;
-
             var result = await _restClient.InstrumentsAsync();
 
             Assert.NotEmpty(result);
             Assert.DoesNotContain(result, x => string.IsNullOrEmpty(x.Name));
         }
 
-        [Fact]
+        //[Fact]
         public async void BalanceTest()
         {
-            if (!IsLocal)
-                return;
-
             var result = await _restClient.BalanceAsync();
             
             Assert.NotEmpty(result);
             Assert.DoesNotContain(result, x => string.IsNullOrEmpty(x.Key));
         }
 
-        [Fact]
+        //[Fact]
         public async void RequestForQuoteTest()
         {
-            if (!IsLocal)
-                return;
-
             var rfqRequest = new RequestForQuoteRequest("BTCUSD", Side.Buy, 1);
             var result = await _restClient.RequestForQuoteAsync(rfqRequest);
 
@@ -57,12 +47,9 @@ namespace Lykke.Service.B2c2Adapter.Tests
             Assert.NotEqual(default(DateTime), result.ValidUntil);
         }
 
-        [Fact]
+        //[Fact]
         public async void TradeTest()
         {
-            if (!IsLocal)
-                return;
-
             var rfqRequest = new RequestForQuoteRequest("BTCUSD", Side.Buy, 1);
             var rfqResponse = await _restClient.RequestForQuoteAsync(rfqRequest);
             var result = await _restClient.TradeAsync(new TradeRequest(rfqResponse));
