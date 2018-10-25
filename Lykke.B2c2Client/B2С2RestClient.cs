@@ -23,7 +23,7 @@ namespace Lykke.B2c2Client
             if (settings == null) throw new NullReferenceException(nameof(settings));
             var url = settings.Url;
             var authorizationToken = settings.AuthorizationToken;
-            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out _))
                 throw new ArgumentOutOfRangeException(nameof(url));
             if (string.IsNullOrWhiteSpace(authorizationToken)) throw new ArgumentOutOfRangeException(nameof(authorizationToken));
             if (logFactory == null) throw new NullReferenceException(nameof(logFactory));
