@@ -72,7 +72,11 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         public void Start()
         {
-            _timer = new TimerTrigger(nameof(ReportService), TimeSpan.FromMinutes(1), _logFactory, DoTimer);
+            if (!_enableAutoUpdate)
+            {
+                _timer = new TimerTrigger(nameof(ReportService), TimeSpan.FromMinutes(1), _logFactory, DoTimer);
+                _timer.Start();
+            }
         }
 
         private async Task DoTimer(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken cancellationtoken)
@@ -87,9 +91,10 @@ namespace Lykke.Service.B2c2Adapter.Services
                     var offset = 0;
                     var data = await _b2C2RestClient.GetTradeHistoryAsync(offset, 10, cancellationtoken);
 
-                    var countNew = 0;
+                    var added = 0;
                     do
                     {
+                        added = 0;
                         foreach (var log in data)
                         {
                             var item = await context.Trades.FirstOrDefaultAsync(e => e.TradeId == log.TradeId, cancellationtoken);
@@ -97,14 +102,27 @@ namespace Lykke.Service.B2c2Adapter.Services
                             {
                                 item = new TradeEntity(log);
                                 context.Trades.Add(item);
-                                countNew++;
+                                added++;
                             }
                         }
 
                         await context.SaveChangesAsync(cancellationtoken);
                         offset += data.Count;
+                        data = await _b2C2RestClient.GetTradeHistoryAsync(offset, 10, cancellationtoken);
+                    } while (added > 0);
 
-                    } while (countNew > 0);
+                    var balance = await _b2C2RestClient.BalanceAsync(cancellationtoken);
+
+                    var ts = DateTime.UtcNow;
+                    var items = balance.Select(e => new BalanceEntity()
+                    {
+                        Asset = e.Key,
+                        Timestamp = ts,
+                        Balance = e.Value
+                    }).ToList();
+
+                    context.Balances.AddRange(items);
+                    await context.SaveChangesAsync(cancellationtoken);
                 }
             }
             finally 
@@ -137,17 +155,14 @@ namespace Lykke.Service.B2c2Adapter.Services
             }
         }
 
-        private bool StopWork()
+        private void StopWork()
         {
             lock (_gate)
             {
                 if (_isActiveWork)
                 {
                     _isActiveWork = false;
-                    return true;
                 }
-
-                return false;
             }
         }
     }
@@ -191,6 +206,20 @@ namespace Lykke.Service.B2c2Adapter.Services
         }
     }
 
+    [Table("B2C2Balances", Schema = "dbo")]
+    public class BalanceEntity
+    {
+        public BalanceEntity()
+        {
+        }
+
+        public string Asset { get; set; }
+
+        public DateTime Timestamp { get; set; }
+
+        public decimal Balance { get; set; }
+    }
+
     public class ReportContext : DbContext
     {
         private readonly string _connectionString;
@@ -202,9 +231,19 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         public DbSet<TradeEntity> Trades { get; set; }
 
+        public DbSet<BalanceEntity> Balances { get; set; }
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.UseSqlServer(_connectionString);
+        }
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            builder.Entity<BalanceEntity>().HasKey(e => new {
+                e.Asset,
+                e.Timestamp
+            });
         }
     }
 }

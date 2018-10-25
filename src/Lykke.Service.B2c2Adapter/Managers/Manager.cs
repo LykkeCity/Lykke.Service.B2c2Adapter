@@ -10,6 +10,7 @@ namespace Lykke.Service.B2c2Adapter.Managers
         private OrderBookPublisher OrderBookPublisher { get; set; }
         private TickPricePublisher TickPricePublisher { get; set; }
         private OrderBooksService OrderBooksService { get; set; }
+        private ReportService ReportService { get; set; }
 
         public Task StartAsync()
         {
@@ -18,6 +19,8 @@ namespace Lykke.Service.B2c2Adapter.Managers
             TickPricePublisher.Start();
 
             OrderBooksService.Start();
+
+            ReportService.Start();
 
             return Task.CompletedTask;
         }
@@ -29,6 +32,8 @@ namespace Lykke.Service.B2c2Adapter.Managers
             TickPricePublisher.Stop();
 
             OrderBooksService.Stop();
+
+            ReportService.Stop();
 
             return Task.CompletedTask;
         }
