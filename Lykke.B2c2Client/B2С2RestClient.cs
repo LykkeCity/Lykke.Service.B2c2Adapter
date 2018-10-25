@@ -188,6 +188,34 @@ namespace Lykke.B2c2Client
             }
         }
 
+        public async Task<List<TradeLog>> GetTradeHistoryAsync(int offset = 0, int limit = 50, CancellationToken ct = default(CancellationToken))
+        {
+            var requestId = Guid.NewGuid();
+            _log.Info("trade history - request", requestId);
+
+            try
+            {
+                using (var response = await _client.GetAsync($"trade/?offset={offset}&limit={limit}", ct))
+                {
+                    var status = response.StatusCode;
+
+                    var responseStr = await response.Content.ReadAsStringAsync();
+                    _log.Info("trade history - response", requestId);
+
+                    CheckForError(responseStr, status, requestId);
+
+                    var result = JsonConvert.DeserializeObject<List<TradeLog>>(responseStr);
+
+                    return result;
+                }
+            }
+            catch (Exception e)
+            {
+                _log.Info($"trade history - response exception: {e}", requestId);
+                throw;
+            }
+        }
+
         private void CheckForError(string response, HttpStatusCode status, Guid guid)
         {
             if (response.Contains("errors"))
