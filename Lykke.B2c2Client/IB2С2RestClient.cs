@@ -30,6 +30,6 @@ namespace Lykke.B2c2Client
         /// <param name="offset">Skip the amount of trades before returning results (default: 0)</param>
         /// <param name="limit">Number of results (default: 50, max: 100)</param>
         /// <returns></returns>
-        Task<List<TradeLog>> GetTradeHistory(int offset = 0, int limit = 100);
+        Task<List<TradeLog>> GetTradeHistoryAsync(int offset = 0, int limit = 50, CancellationToken ct = default(CancellationToken));
     }
 }

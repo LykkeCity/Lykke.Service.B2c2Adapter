@@ -27,6 +27,9 @@ B2c2AdapterService:
                 - AzureTableStorage
                 - Logs
 
+        ReportSqlConnString:
+            settings-key: ReportSqlConnString
+
     RabbitMq:
         OrderBooks:
             Enabled:

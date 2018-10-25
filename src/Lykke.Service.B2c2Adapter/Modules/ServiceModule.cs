@@ -62,6 +62,10 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(orderBooksServiceSettings))
                 .WithParameter(TypedParameter.From(webSocketSettings));
+
+            builder.RegisterType<ReportService>()
+                .SingleInstance()
+                .WithParameter(TypedParameter.From(_settings.Db.ReportSqlConnString));
         }
     }
 }

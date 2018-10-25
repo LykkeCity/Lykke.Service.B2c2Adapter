@@ -188,7 +188,7 @@ namespace Lykke.B2c2Client
             }
         }
 
-        public async Task<List<TradeLog>> GetTradeHistory(int offset = 0, int limit = 100, CancellationToken ct = default(CancellationToken))
+        public async Task<List<TradeLog>> GetTradeHistoryAsync(int offset = 0, int limit = 50, CancellationToken ct = default(CancellationToken))
         {
             var requestId = Guid.NewGuid();
             _log.Info("trade history - request", requestId);
