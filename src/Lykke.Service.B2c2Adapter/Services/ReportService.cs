@@ -72,7 +72,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         public void Start()
         {
-            if (!_enableAutoUpdate)
+            if (_enableAutoUpdate)
             {
                 _timer = new TimerTrigger(nameof(ReportService), TimeSpan.FromMinutes(1), _logFactory, DoTimer);
                 _timer.Start();
