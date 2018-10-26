@@ -28,7 +28,7 @@ B2c2AdapterService:
                 - Logs
 
         ReportSqlConnString:
-            settings-key: ReportSqlConnString
+            settings-key: OrderbooksBridgeJob-SqlDbConnectionString
 
     EnableExportToReportDb:
         settings-key: B2C2AdapterService-EnableExportToReportDb
