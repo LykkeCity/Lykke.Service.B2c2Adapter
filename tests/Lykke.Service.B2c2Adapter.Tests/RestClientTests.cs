@@ -78,7 +78,7 @@ namespace Lykke.Service.B2c2Adapter.Tests
                 Assert.NotEmpty(ledgerLog.Reference);
                 Assert.NotEmpty(ledgerLog.Currency);
                 Assert.NotEqual(0, ledgerLog.Amount);
-                Assert.NotEqual(LedgerLogType.None, ledgerLog.Type);
+                Assert.NotEmpty(ledgerLog.Type);
                 Assert.NotEqual(default(DateTime), ledgerLog.Created);
             }
         }
