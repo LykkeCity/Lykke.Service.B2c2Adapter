@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using Common;
+using Common.Log;
 using Lykke.B2c2Client;
 using Lykke.Common.Log;
 using Lykke.Service.B2c2Adapter.EntityFramework;
@@ -18,6 +19,7 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly string _sqlConnString;
         private readonly bool _enableAutoUpdate;
         private readonly ILogFactory _logFactory;
+        private readonly ILog _log;
         private TimerTrigger _timer;
         private readonly object _gate = new object();
         private bool _isActiveWork = false;
@@ -28,6 +30,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             _sqlConnString = sqlConnString;
             _enableAutoUpdate = enableAutoUpdate;
             _logFactory = logFactory;
+            _log = logFactory.CreateLog(this);
         }
 
         public async Task<int> ReloadLedgerHistoryAsync()
@@ -42,7 +45,9 @@ namespace Lykke.Service.B2c2Adapter.Services
                     var offset = 0;
                     var data = await _b2C2RestClient.GetLedgerHistoryAsync(offset, 100);
 
-                    await context.Database.ExecuteSqlCommandAsync($"TRUNCATE TABLE {Constants.Schema}.{Constants.TradesTable}");
+                    var query = $"TRUNCATE TABLE {Constants.Schema}.{Constants.LedgersTable}";
+
+                    await context.Database.ExecuteSqlCommandAsync(query);
 
                     while (data.Any())
                     {
@@ -57,10 +62,16 @@ namespace Lykke.Service.B2c2Adapter.Services
                     return offset;
                 }
             }
+            catch (Exception e)
+            {
+                _log.Warning($"Exception while reloading ledger history: {e}.");
+            }
             finally
             {
                 StopWork();
             }
+
+            return -1;
         }
 
         private ReportContext CreateContext()
@@ -86,7 +97,8 @@ namespace Lykke.Service.B2c2Adapter.Services
                         added = 0;
                         foreach (var log in data)
                         {
-                            var item = await context.Ledgers.FirstOrDefaultAsync(e => e.TransactionId == log.TransactionId, ct);
+                            var item = await context.Ledgers.FirstOrDefaultAsync(
+                                e => e.TransactionId == log.TransactionId, ct);
                             if (item != null)
                                 continue;
 
@@ -100,6 +112,10 @@ namespace Lykke.Service.B2c2Adapter.Services
                         data = await _b2C2RestClient.GetLedgerHistoryAsync(offset, 10, ct);
                     } while (added > 0);
                 }
+            }
+            catch (Exception e)
+            {
+                _log.Warning($"Exception while getting ledger history and writing it to the database: {e}.");
             }
             finally 
             {

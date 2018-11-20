@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
 using Common;
+using Common.Log;
 using Lykke.B2c2Client;
 using Lykke.Common.Log;
 using Lykke.Service.B2c2Adapter.EntityFramework;
@@ -17,6 +18,7 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly string _sqlConnString;
         private readonly bool _enableAutoUpdate;
         private readonly ILogFactory _logFactory;
+        private readonly ILog _log;
         private TimerTrigger _timer;
 
         public BalanceHistoryService(IB2С2RestClient b2C2RestClient, string sqlConnString, bool enableAutoUpdate, ILogFactory logFactory)
@@ -25,6 +27,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             _sqlConnString = sqlConnString;
             _enableAutoUpdate = enableAutoUpdate;
             _logFactory = logFactory;
+            _log = logFactory.CreateLog(this);
         }
         
         private ReportContext CreateContext()
