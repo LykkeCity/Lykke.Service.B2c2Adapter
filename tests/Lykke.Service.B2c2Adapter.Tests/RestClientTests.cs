@@ -64,5 +64,23 @@ namespace Lykke.Service.B2c2Adapter.Tests
             Assert.Null(result.Order);
             Assert.NotEqual(default(DateTime), result.Created);
         }
+
+        //[Fact]
+        public async void LedgerTest()
+        {
+            var result = await _restClient.GetLedgerHistoryAsync();
+
+            Assert.NotNull(result);
+            Assert.NotEmpty(result);
+            foreach (var ledgerLog in result)
+            {
+                Assert.NotEmpty(ledgerLog.TransactionId);
+                Assert.NotEmpty(ledgerLog.Reference);
+                Assert.NotEmpty(ledgerLog.Currency);
+                Assert.NotEqual(0, ledgerLog.Amount);
+                Assert.NotEqual(LedgerLogType.None, ledgerLog.Type);
+                Assert.NotEqual(default(DateTime), ledgerLog.Created);
+            }
+        }
     }
 }

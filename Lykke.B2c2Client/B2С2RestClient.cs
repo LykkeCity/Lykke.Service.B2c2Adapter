@@ -216,6 +216,34 @@ namespace Lykke.B2c2Client
             }
         }
 
+        public async Task<List<LedgerLog>> GetLedgerHistoryAsync(int offset = 0, int limit = 50, CancellationToken ct = default(CancellationToken))
+        {
+            var requestId = Guid.NewGuid();
+            _log.Info("ledger history - request", requestId);
+
+            try
+            {
+                using (var response = await _httpClient.GetAsync($"ledger/?offset={offset}&limit={limit}", ct))
+                {
+                    var status = response.StatusCode;
+
+                    var responseStr = await response.Content.ReadAsStringAsync();
+                    _log.Info("ledger history - response", requestId);
+
+                    CheckForError(responseStr, status, requestId);
+
+                    var result = JsonConvert.DeserializeObject<List<LedgerLog>>(responseStr);
+
+                    return result;
+                }
+            }
+            catch (Exception e)
+            {
+                _log.Info($"ledger history - response exception: {e}", requestId);
+                throw;
+            }
+        }
+
         private void CheckForError(string response, HttpStatusCode status, Guid guid)
         {
             if (!response.Contains("errors"))
