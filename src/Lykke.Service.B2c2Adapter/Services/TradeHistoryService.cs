@@ -109,7 +109,6 @@ namespace Lykke.Service.B2c2Adapter.Services
                         offset += data.Count;
                         data = await _b2C2RestClient.GetTradeHistoryAsync(offset, 10, ct);
                     } while (added > 0);
-
                 }
             }
             catch (Exception e)

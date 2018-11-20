@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,21 +38,46 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private async Task DoTimer(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
         {
-            using (var context = CreateContext())
+            var balance = await GetBalance(ct);
+            if (balance == null)
+                return;
+
+            try
+            {
+                using (var context = CreateContext())
+                {
+                    var ts = DateTime.UtcNow;
+                    var items = balance.Select(e => new BalanceEntity
+                    {
+                        Asset = e.Key,
+                        Timestamp = ts,
+                        Balance = e.Value
+                    }).ToList();
+
+                    context.Balances.AddRange(items);
+                    await context.SaveChangesAsync(ct);
+                }
+            }
+            catch (Exception e)
+            {
+                _log.Warning($"Exception occured while saving balance to the database: {e}.");
+            }
+        }
+
+        private async Task<IReadOnlyDictionary<string, decimal>> GetBalance(CancellationToken ct = default(CancellationToken))
+        {
+            try
             {
                 var balance = await _b2C2RestClient.BalanceAsync(ct);
 
-                var ts = DateTime.UtcNow;
-                var items = balance.Select(e => new BalanceEntity
-                {
-                    Asset = e.Key,
-                    Timestamp = ts,
-                    Balance = e.Value
-                }).ToList();
-
-                context.Balances.AddRange(items);
-                await context.SaveChangesAsync(ct);
+                return balance;
             }
+            catch (Exception e)
+            {
+                _log.Warning($"Exception occured while getting balance from B2C2: {e}.");
+            }
+
+            return null;
         }
 
         public void Start()
