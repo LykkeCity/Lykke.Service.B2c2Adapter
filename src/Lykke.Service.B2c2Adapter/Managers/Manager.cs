@@ -11,6 +11,7 @@ namespace Lykke.Service.B2c2Adapter.Managers
         private TickPricePublisher TickPricePublisher { get; set; }
         private OrderBooksService OrderBooksService { get; set; }
         private TradeHistoryService TradeHistoryService { get; set; }
+        private BalanceHistoryService BalanceHistoryService { get; set; }
         private LedgerHistoryService LedgerHistoryService { get; set; }
 
         public Task StartAsync()
@@ -22,6 +23,8 @@ namespace Lykke.Service.B2c2Adapter.Managers
             OrderBooksService.Start();
 
             TradeHistoryService.Start();
+
+            BalanceHistoryService.Start();
 
             LedgerHistoryService.Start();
 
@@ -37,6 +40,8 @@ namespace Lykke.Service.B2c2Adapter.Managers
             OrderBooksService.Stop();
 
             TradeHistoryService.Stop();
+
+            BalanceHistoryService.Stop();
 
             LedgerHistoryService.Stop();
 
