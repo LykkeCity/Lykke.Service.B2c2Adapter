@@ -153,7 +153,7 @@ namespace Lykke.B2c2Client
             }
             catch (WebSocketException e)
             {
-                _log.Warning($"Could not establish WebSocket connection to {_baseUri}.");
+                _log.Warning($"Could not establish WebSocket connection to {_baseUri}, exception: {e}.");
             }
 
             if (_clientWebSocket.State == WebSocketState.Open)

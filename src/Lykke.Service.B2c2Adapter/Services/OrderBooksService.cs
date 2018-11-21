@@ -72,19 +72,12 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         public void Start()
         {
-            Task.Run(StartAsync);
-        }
-
-        public Task StartAsync()
-        {
             InitializeAssetPairs();
 
             _reconnectIfNeededTrigger.Start();
             _forceReconnectTrigger.Start();
 
             ForceReconnect();
-
-            return Task.CompletedTask;
         }
 
         public IReadOnlyCollection<string> GetAllInstruments()
@@ -197,7 +190,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             var needToReconnect = hasAny && hasStale;
 
             var oldest = _orderBooksCache.Values.OrderBy(x => x.Timestamp).FirstOrDefault();
-            var oldestInstrument = oldest != null ? $"Oldest instrument: {oldest.Asset} - {oldest.Timestamp}." : "No instruments yet.";
+            var oldestInstrument = oldest != null ? $"Oldest instrument: {oldest.Asset} - {oldest.Timestamp}." : "No order books yet.";
             _log.Info($"Need to reconnect? {needToReconnect}. {oldestInstrument}");
 
             if (needToReconnect)
@@ -279,7 +272,6 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             _reconnectIfNeededTrigger.Stop();
             _forceReconnectTrigger.Stop();
-
         }
 
         #region IDisposable

@@ -9,11 +9,13 @@ namespace Lykke.Service.B2c2Adapter.Controllers
     [Route("/api/[controller]")]
     public sealed class ReportController
     {
-        private readonly ReportService _reportService;
+        private readonly TradeHistoryService _tradeHistoryService;
+        private readonly LedgerHistoryService _ledgerHistoryService;
 
-        public ReportController(ReportService reportService)
+        public ReportController(TradeHistoryService tradeHistoryService, LedgerHistoryService ledgerHistoryService)
         {
-            _reportService = reportService;
+            _tradeHistoryService = tradeHistoryService;
+            _ledgerHistoryService = ledgerHistoryService;
         }
 
         [SwaggerOperation("ReloadTradeHistory")]
@@ -21,7 +23,15 @@ namespace Lykke.Service.B2c2Adapter.Controllers
         [ProducesResponseType(typeof(int), (int) HttpStatusCode.OK)]
         public Task<int> ReloadTradeHistory()
         {
-            return _reportService.ReloadTradeHistoryAsync();
+            return _tradeHistoryService.ReloadTradeHistoryAsync();
+        }
+
+        [SwaggerOperation("ReloadLedgerHistory")]
+        [HttpPost("reloadLedgers")]
+        [ProducesResponseType(typeof(int), (int)HttpStatusCode.OK)]
+        public Task<int> ReloadLedgerHistory()
+        {
+            return _ledgerHistoryService.ReloadLedgerHistoryAsync();
         }
     }
 }
