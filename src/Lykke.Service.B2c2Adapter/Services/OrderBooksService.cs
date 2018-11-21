@@ -27,6 +27,7 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly ConcurrentDictionary<string, string> _withWithoutSuffixMapping;
         private readonly ConcurrentDictionary<string, string> _withoutWithSuffixMapping;
         private readonly ConcurrentDictionary<string, OrderBook> _orderBooksCache;
+        private readonly ConcurrentDictionary<string, string> _subscriptions;
         private readonly IB2С2RestClient _b2C2RestClient;
         private IB2С2WebSocketClient _b2C2WebSocketClient;
         private readonly B2C2ClientSettings _webSocketC2ClientSettings;
@@ -51,6 +52,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             _withWithoutSuffixMapping = new ConcurrentDictionary<string, string>();
             _withoutWithSuffixMapping = new ConcurrentDictionary<string, string>();
             _orderBooksCache = new ConcurrentDictionary<string, OrderBook>();
+            _subscriptions = new ConcurrentDictionary<string, string>();
 
             _instrumentsLevels = settings.InstrumentsLevels == null || !settings.InstrumentsLevels.Any() ? throw new ArgumentOutOfRangeException(nameof(_instrumentsLevels)) : settings.InstrumentsLevels;
 
@@ -186,12 +188,13 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             var hasAny = _orderBooksCache.Values.Any();
             var hasStale = _orderBooksCache.Values.Any(IsStale);
+            var allSubscribed = _subscriptions.Count == _instrumentsLevels.Count;
 
-            var needToReconnect = hasAny && hasStale;
+            var needToReconnect = (hasAny && hasStale) || !allSubscribed;
 
             var oldest = _orderBooksCache.Values.OrderBy(x => x.Timestamp).FirstOrDefault();
-            var oldestInstrument = oldest != null ? $"Oldest instrument: {oldest.Asset} - {oldest.Timestamp}." : "No order books yet.";
-            _log.Info($"Need to reconnect? {needToReconnect}. {oldestInstrument}");
+            var oldestInstrument = oldest != null ? $"Oldest instrument: {oldest.Asset} - {oldest.Timestamp}" : "No order books yet";
+            _log.Info($"Need to reconnect? {needToReconnect}. {oldestInstrument}. Subscribed to {_subscriptions.Count} instruments.");
 
             if (needToReconnect)
                 ForceReconnect();
@@ -213,6 +216,8 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private void ForceReconnect()
         {
+            _log.Info("Force reconnect...");
+
             lock (_syncReconnect)
             {
                 _log.Info("Disposing WebSocketClient.");
@@ -231,6 +236,8 @@ namespace Lykke.Service.B2c2Adapter.Services
                         {
                             if (x.Exception != null)
                                 _log.Info($"Exception while subscribing to {instrument}.", exception: x.Exception.InnerException);
+                            else
+                                _subscriptions[instrument] = instrument;
                         });
                 }
             }

@@ -45,7 +45,9 @@ namespace Lykke.Service.B2c2Adapter.Services
                     var offset = 0;
                     var data = await _b2C2RestClient.GetTradeHistoryAsync(offset, 100);
 
-                    await context.Database.ExecuteSqlCommandAsync($"TRUNCATE TABLE {Constants.Schema}.{Constants.TradesTable}");
+                    var query = $"TRUNCATE TABLE {Constants.Schema}.{Constants.TradesTable}";
+
+                    await context.Database.ExecuteSqlCommandAsync(query);
 
                     while (data.Any())
                     {
@@ -60,16 +62,10 @@ namespace Lykke.Service.B2c2Adapter.Services
                     return offset;
                 }
             }
-            catch (Exception e)
-            {
-                _log.Warning($"Exception while reloading trade history: {e}.");
-            }
             finally
             {
                 StopWork();
             }
-
-            return -1;
         }
 
         private ReportContext CreateContext()
@@ -110,10 +106,6 @@ namespace Lykke.Service.B2c2Adapter.Services
                         data = await _b2C2RestClient.GetTradeHistoryAsync(offset, 10, ct);
                     } while (added > 0);
                 }
-            }
-            catch (Exception e)
-            {
-                _log.Warning($"Exception while getting trading history and writing it to the database: {e}.");
             }
             finally 
             {

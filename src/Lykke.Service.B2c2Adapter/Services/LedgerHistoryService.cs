@@ -62,16 +62,10 @@ namespace Lykke.Service.B2c2Adapter.Services
                     return offset;
                 }
             }
-            catch (Exception e)
-            {
-                _log.Warning($"Exception while reloading ledger history: {e}.");
-            }
             finally
             {
                 StopWork();
             }
-
-            return -1;
         }
 
         private ReportContext CreateContext()
@@ -112,10 +106,6 @@ namespace Lykke.Service.B2c2Adapter.Services
                         data = await _b2C2RestClient.GetLedgerHistoryAsync(offset, 10, ct);
                     } while (added > 0);
                 }
-            }
-            catch (Exception e)
-            {
-                _log.Warning($"Exception while getting ledger history and writing it to the database: {e}.");
             }
             finally 
             {
