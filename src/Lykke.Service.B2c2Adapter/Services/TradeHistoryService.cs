@@ -45,7 +45,9 @@ namespace Lykke.Service.B2c2Adapter.Services
                     var offset = 0;
                     var data = await _b2C2RestClient.GetTradeHistoryAsync(offset, 100);
 
-                    await context.Database.ExecuteSqlCommandAsync($"TRUNCATE TABLE {Constants.Schema}.{Constants.TradesTable}");
+                    var query = $"TRUNCATE TABLE {Constants.Schema}.{Constants.TradesTable}";
+
+                    await context.Database.ExecuteSqlCommandAsync(query);
 
                     while (data.Any())
                     {
