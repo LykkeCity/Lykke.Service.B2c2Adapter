@@ -69,7 +69,7 @@ namespace Lykke.B2c2Client
             }
 
             if (_clientWebSocket.State != WebSocketState.Open)
-                return Task.FromException(new B2c2WebSocketException($"State is not 'Open': {_clientWebSocket.State}"));
+                return Task.FromException(new B2c2WebSocketException($"Subscribing to {instrument} - state is not 'Open': {_clientWebSocket.State}"));
 
             var tag = Guid.NewGuid().ToString();
 
@@ -127,11 +127,16 @@ namespace Lykke.B2c2Client
 
         private void Connect(CancellationToken ct = default(CancellationToken))
         {
-            _log.Info("Attempt to establish a WebSocket connection.");
+            _log.Info("Attempt to connect and start handle messages cycle...");
 
             _clientWebSocket.Options.SetRequestHeader("Authorization", $"Token {_authorizationToken}");
 
-            TryConnect(ct).GetAwaiter().GetResult();
+            var connected = TryConnect(ct).GetAwaiter().GetResult();
+
+            _log.Info($"Connected? {connected}.");
+
+            if (!connected)
+                return;
 
             // Listen for messages in separate io thread
             Task.Run(async () =>
@@ -151,13 +156,15 @@ namespace Lykke.B2c2Client
 
         private async Task<bool> TryConnect(CancellationToken ct)
         {
+            _log.Info("Try to connect...");
+
             try
             {
                 await _clientWebSocket.ConnectAsync(new Uri($"{_baseUri}/quotes"), ct).ConfigureAwait(false);
             }
             catch (WebSocketException e)
             {
-                _log.Warning($"Could not establish WebSocket connection to {_baseUri}, exception: {e}.");
+                _log.Warning($"Exception occured while connecting to {_baseUri}: {e}.");
             }
 
             if (_clientWebSocket.State == WebSocketState.Open)
@@ -407,7 +414,11 @@ namespace Lykke.B2c2Client
 
         private void ConnectIfNeeded(CancellationToken ct = default(CancellationToken))
         {
-            if (_clientWebSocket.State == WebSocketState.None)
+            var needToConnect = _clientWebSocket.State == WebSocketState.None;
+
+            _log.Info($"WebSocket connection status: {_clientWebSocket.State}.");
+
+            if (needToConnect)
                 Connect(ct);
         }
 
