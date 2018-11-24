@@ -136,13 +136,17 @@ namespace Lykke.B2c2Client
             // Listen for messages in separate io thread
             Task.Run(async () =>
                 {
+                    if (_cancellationTokenSource == null || _cancellationTokenSource.IsCancellationRequested)
+                        return;
+
                     await HandleMessagesCycleAsync(_cancellationTokenSource.Token);
+
                 }, _cancellationTokenSource.Token)
                 .ContinueWith(t =>
                 {
                     if (t.IsFaulted)
                         _log.Error(t.Exception, "Something went wrong in subscription thread.");
-                }, default(CancellationToken));
+                }, _cancellationTokenSource.Token);
         }
 
         private async Task<bool> TryConnect(CancellationToken ct)
