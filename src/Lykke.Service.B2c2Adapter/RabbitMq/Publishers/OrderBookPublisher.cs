@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Autofac;
 using Common;
 using Common.Log;
@@ -57,7 +58,14 @@ namespace Lykke.Service.B2c2Adapter.RabbitMq.Publishers
             if (_publisher == null || !_settting.Enabled)
                 return;
 
-            await _publisher.ProduceAsync(message);
+            try
+            {
+                await _publisher.ProduceAsync(message);
+            }
+            catch (Exception e)
+            {
+                _log.Warning($"OrderBookPublisher.PublishAsync(...) exception: ${e}.");
+            }
         }
     }
 }

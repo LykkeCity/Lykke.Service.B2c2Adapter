@@ -78,8 +78,6 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             _reconnectIfNeededTrigger.Start();
             _forceReconnectTrigger.Start();
-
-            ForceReconnect();
         }
 
         public IReadOnlyCollection<string> GetAllInstruments()
