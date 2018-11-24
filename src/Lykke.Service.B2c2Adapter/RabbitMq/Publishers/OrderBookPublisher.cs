@@ -64,7 +64,12 @@ namespace Lykke.Service.B2c2Adapter.RabbitMq.Publishers
             }
             catch (Exception e)
             {
-                _log.Warning($"OrderBookPublisher.PublishAsync(...) exception: ${e}.");
+                var logMessage = $"OrderBookPublisher.PublishAsync() exception: ${e}.";
+
+                if (e.Message.Contains("isn't started yet"))
+                    _log.Info(logMessage);
+                else
+                    _log.Warning(logMessage);
             }
         }
     }
