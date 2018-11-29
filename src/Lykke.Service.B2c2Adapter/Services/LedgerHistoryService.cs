@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,6 +7,7 @@ using Autofac;
 using Common;
 using Common.Log;
 using Lykke.B2c2Client;
+using Lykke.B2c2Client.Models.Rest;
 using Lykke.Common.Log;
 using Lykke.Service.B2c2Adapter.EntityFramework;
 using Lykke.Service.B2c2Adapter.EntityFramework.Models;
@@ -58,7 +60,9 @@ namespace Lykke.Service.B2c2Adapter.Services
                         await context.SaveChangesAsync();
 
                         offset += data.Count;
-                        data = await _b2C2RestClient.GetLedgerHistoryAsync(offset, 100);
+
+                        data = await GetDataFromB2C2(offset);
+
                         _log.Info($"Current offset={offset}; load more {data.Count}");
                     }
                     
@@ -68,6 +72,27 @@ namespace Lykke.Service.B2c2Adapter.Services
             finally
             {
                 StopWork();
+            }
+        }
+
+        private async Task<List<LedgerLog>> GetDataFromB2C2(int offset)
+        {
+            while (true)
+            {
+                try
+                {
+                    var data = await _b2C2RestClient.GetLedgerHistoryAsync(offset, 100);
+                    return data;
+                }
+                catch (Exception ex)
+                {
+                    if (ex.ToString().Contains("Request was throttled"))
+                    {
+                        _log.Info($"Request was throttled, wait 60 second");
+                        await Task.Delay(60000);
+                    }
+                    else throw;
+                }
             }
         }
 
