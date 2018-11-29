@@ -44,8 +44,10 @@ namespace Lykke.Service.B2c2Adapter.Services
                 {
                     var offset = 0;
                     var data = await _b2C2RestClient.GetLedgerHistoryAsync(offset, 100);
+                    _log.Info($"Current offset={offset}; load more {data.Count}");
 
                     var query = $"TRUNCATE TABLE {Constants.Schema}.{Constants.LedgersTable}";
+                    _log.Info($"TRUNCATE TABLE {Constants.Schema}.{Constants.LedgersTable}");
 
                     await context.Database.ExecuteSqlCommandAsync(query);
 
@@ -57,6 +59,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
                         offset += data.Count;
                         data = await _b2C2RestClient.GetLedgerHistoryAsync(offset, 100);
+                        _log.Info($"Current offset={offset}; load more {data.Count}");
                     }
                     
                     return offset;
