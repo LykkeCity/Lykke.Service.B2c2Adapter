@@ -53,11 +53,18 @@ namespace Lykke.Service.B2c2Adapter.Services
 
                     await context.Database.ExecuteSqlCommandAsync(query);
 
+                    var list = new HashSet<string>();
+
                     while (data.Any())
                     {
-                        var items = data.Select(e => new LedgerEntity(e)).ToList();
+                        var items = data.Select(e => new LedgerEntity(e)).Where(e => !list.Contains(e.TransactionId)).ToList();
                         context.Ledgers.AddRange(items);
                         await context.SaveChangesAsync();
+
+                        foreach (var i in items)
+                        {
+                            list.Add(i.TransactionId);
+                        }
 
                         offset += data.Count;
 
