@@ -198,7 +198,16 @@ namespace Lykke.Service.B2c2Adapter.Services
                 var oldest = _orderBooksCache.Values.OrderBy(x => x.Timestamp).FirstOrDefault();
                 var secondsPassed = (DateTime.UtcNow - oldest?.Timestamp)?.TotalSeconds;
 
-                _log.Info("Need to reconnect.", new { oldest?.Asset, secondsPassed });
+                _log.Info("Need to reconnect.", new
+                {
+                    oldest?.Asset,
+                    secondsPassed,
+                    hasAny,
+                    hasStale,
+                    allSubscribed,
+                    subscriptions =_subscriptions.Count,
+                    instruments =_instrumentsLevels.Count
+                });
 
                 ForceReconnect();
             }
