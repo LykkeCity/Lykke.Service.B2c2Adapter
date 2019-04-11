@@ -300,11 +300,11 @@ namespace Lykke.B2c2Client
             {
                 var errorResponse = jToken.ToObject<ErrorResponse>();
 
-                var message = $"{nameof(PriceMessage)}.{nameof(PriceMessage.Success)} == false. {jToken}";
+                var message = $"{nameof(PriceMessage)}.{nameof(PriceMessage.Success)} == false.";
                 if (errorResponse.Code == ErrorCode.NotAbleToQuoteAtTheMoment)
-                    _log.Info(message);
+                    _log.Info(message, jToken);
                 else
-                    _log.Warning(message);
+                    _log.Warning(message, context: jToken);
 
                 return;
             }
@@ -312,6 +312,14 @@ namespace Lykke.B2c2Client
             var result = jToken.ToObject<PriceMessage>();
 
             Func<PriceMessage, Task> handler;
+
+            if (!_instrumentsHandlers.ContainsKey(result.Instrument))
+            {
+                _log.Info("Received a price that we were not subscribed to.", new { result.Instrument });
+
+                return;
+            }
+                
             lock (_sync)
             {
                 handler = _instrumentsHandlers[result.Instrument];
@@ -320,9 +328,9 @@ namespace Lykke.B2c2Client
             {
                 handler(result).GetAwaiter().GetResult();
             }
-            catch (Exception e)
+            catch (Exception exception)
             {
-                _log.Warning("Handler (OrderBooksService) failed.", e);
+                _log.Warning("WebSocket price message handler failed.", exception);
             }
         }
 

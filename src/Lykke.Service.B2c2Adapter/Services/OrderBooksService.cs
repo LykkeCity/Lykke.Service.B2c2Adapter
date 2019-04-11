@@ -54,7 +54,8 @@ namespace Lykke.Service.B2c2Adapter.Services
             _orderBooksCache = new ConcurrentDictionary<string, OrderBook>();
             _subscriptions = new ConcurrentDictionary<string, string>();
 
-            _instrumentsLevels = settings.InstrumentsLevels == null || !settings.InstrumentsLevels.Any() ? throw new ArgumentOutOfRangeException(nameof(_instrumentsLevels)) : settings.InstrumentsLevels;
+            _instrumentsLevels = settings.InstrumentsLevels == null || !settings.InstrumentsLevels.Any()
+                ? throw new ArgumentOutOfRangeException(nameof(_instrumentsLevels)) : settings.InstrumentsLevels;
 
             _b2C2RestClient = b2C2RestClient ?? throw new NullReferenceException(nameof(b2C2RestClient));
             _webSocketC2ClientSettings = webSocketC2ClientSettings ?? throw new NullReferenceException(nameof(webSocketC2ClientSettings));
@@ -107,19 +108,21 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             IReadOnlyCollection<Instrument> instruments;
 
-            _log.Info("Starting instrument initialization...");
+            _log.Info("Started instrument initialization.");
 
             while (true)
             {
                 try
                 {
                     Thread.Sleep(1000);
+
                     instruments = _b2C2RestClient.InstrumentsAsync().GetAwaiter().GetResult();
+
                     break;
                 }
-                catch (Exception e)
+                catch (Exception exception)
                 {
-                    _log.Info("Exception occured while getting instruments.", exception: e);
+                    _log.Info("Exception occured while getting instruments via REST.", exception);
                 }
             }
 
@@ -130,7 +133,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                 _withoutWithSuffixMapping[withoutSpotSuffix] = instrument.Name;
             }
 
-            _log.Info($"Finished instrument initialization, total instruments: {instruments.Count}.");
+            _log.Info("Finished instrument initialization.", new { instruments.Count });
         }
 
         private async Task HandleAsync(PriceMessage message)
@@ -174,7 +177,7 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             try
             {
-                await ReconnectIfNeeded();
+                ReconnectIfNeeded();
             }
             catch (Exception e)
             {
@@ -182,7 +185,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             }
         }
 
-        private async Task ReconnectIfNeeded()
+        private void ReconnectIfNeeded()
         {
             var hasAny = _orderBooksCache.Values.Any();
             var hasStale = _orderBooksCache.Values.Any(IsStale);
@@ -190,12 +193,28 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             var needToReconnect = (hasAny && hasStale) || !allSubscribed;
 
-            var oldest = _orderBooksCache.Values.OrderBy(x => x.Timestamp).FirstOrDefault();
-            var oldestInstrument = oldest != null ? $"Oldest instrument: {oldest.Asset} - {oldest.Timestamp}" : "No order books yet";
-            _log.Info($"Need to reconnect? {needToReconnect}. {oldestInstrument}. Subscribed to {_subscriptions.Count} instruments.");
-
             if (needToReconnect)
+            {
+                var oldest = _orderBooksCache.Values.OrderBy(x => x.Timestamp).FirstOrDefault();
+                var secondsPassed = (DateTime.UtcNow - oldest?.Timestamp)?.TotalSeconds;
+
+                _log.Info("Need to reconnect.", new
+                {
+                    oldest?.Asset,
+                    secondsPassed,
+                    hasAny,
+                    hasStale,
+                    allSubscribed,
+                    subscriptions =_subscriptions.Count,
+                    instruments =_instrumentsLevels.Count
+                });
+
                 ForceReconnect();
+            }
+            else
+            {
+                _log.Info("No need to reconnect.");
+            }
         }
 
         private async Task ForceReconnect(ITimerTrigger timer, TimerTriggeredHandlerArgs args, CancellationToken ct)
@@ -214,7 +233,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private void ForceReconnect()
         {
-            _log.Info("Force reconnect...");
+            _log.Info("Forcing reconnect...");
 
             lock (_syncReconnect)
             {
@@ -233,7 +252,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                         .ContinueWith(x =>
                         {
                             if (x.Exception != null)
-                                _log.Info($"Exception while subscribing to {instrument}.", exception: x.Exception.InnerException);
+                                _log.Info("Exception while subscribing to an instrument.", exception: x.Exception.InnerException, context: new { instrument });
                             else
                                 _subscriptions[instrument] = instrument;
                         });
@@ -247,7 +266,7 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             if (IsStale(orderBook))
             {
-                _log.Info($"Stale: '{orderBook.Asset}'.");
+                _log.Info("Stale instrument.", new { orderBook.Asset });
 
                 return;
             }
