@@ -66,7 +66,7 @@ namespace Lykke.Service.B2c2Adapter.Tests
             Assert.NotEqual(default(DateTime), result.Created);
         }
 
-        [Fact]
+        //[Fact]
         public async void OrderTest()
         {
             // arrange
