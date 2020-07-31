@@ -92,17 +92,17 @@ namespace Lykke.Service.B2c2Adapter.Tests
             Assert.Equal(orderResponse.Instrument, orderRequest.Instrument);
             Assert.Equal(orderResponse.Side, orderRequest.Side);
             Assert.NotEqual(0, orderResponse.Price);
-            Assert.NotEqual(default, orderResponse.ExecutedPrice);
+            Assert.NotEqual(default(decimal), orderResponse.ExecutedPrice);
             Assert.Equal(orderResponse.Quantity, orderRequest.Quantity);
-            Assert.NotEqual(default, orderResponse.Created);
+            Assert.NotEqual(default(DateTime), orderResponse.Created);
             Assert.NotEmpty(orderResponse.Trades);
 
             var trade = orderResponse.Trades.Single();
             Assert.NotEmpty(trade.TradeId);
-            Assert.NotEqual(default, trade.TradeId);
+            Assert.NotEqual(default(string), trade.TradeId);
             Assert.Equal(trade.Instrument, orderRequest.Instrument);
             Assert.Equal(trade.Side, orderRequest.Side);
-            Assert.NotEqual(default, trade.Price);
+            Assert.NotEqual(default(decimal), trade.Price);
             Assert.Equal(trade.Quantity, orderRequest.Quantity);
             Assert.Equal(trade.Order, orderResponse.OrderId);
             Assert.NotEqual(orderResponse.Created, trade.Created);
