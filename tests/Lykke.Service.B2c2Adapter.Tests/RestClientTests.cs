@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Models.Rest;
 using Lykke.B2c2Client.Settings;
@@ -9,7 +10,7 @@ namespace Lykke.Service.B2c2Adapter.Tests
 {
     public class RestClientTests
     {
-        private const string Url = "https://sandboxapi.b2c2.net/";
+        private const string Url = "https://api.uat.b2c2.net";
         private const string Token = "";
         private readonly IB2С2RestClient _restClient = new B2С2RestClient(new B2C2ClientSettings(Url, Token), LogFactory.Create());
 
@@ -63,6 +64,49 @@ namespace Lykke.Service.B2c2Adapter.Tests
             Assert.Equal(result.Quantity, rfqResponse.Quantity);
             Assert.Null(result.Order);
             Assert.NotEqual(default(DateTime), result.Created);
+        }
+
+        [Fact]
+        public async void OrderTest()
+        {
+            // arrange
+
+            var orderRequest = new OrderRequest();
+            orderRequest.ClientOrderId = Guid.NewGuid().ToString();
+            orderRequest.Instrument = "BTCUSD.SPOT";
+            orderRequest.Side = Side.Buy;
+            orderRequest.Quantity = 0.01m;
+            orderRequest.OrderType = OrderType.MKT;
+            orderRequest.ValidUntil = DateTime.UtcNow.AddSeconds(10);
+            orderRequest.AcceptableSlippage = 0;
+
+            // act
+
+            var orderResponse = await _restClient.OrderAsync(orderRequest);
+
+            // assert
+
+            Assert.NotNull(orderResponse);
+            Assert.NotEmpty(orderResponse.OrderId);
+            Assert.Equal(orderResponse.ClientOrderId, orderRequest.ClientOrderId);
+            Assert.Equal(orderResponse.Instrument, orderRequest.Instrument);
+            Assert.Equal(orderResponse.Side, orderRequest.Side);
+            Assert.NotEqual(0, orderResponse.Price);
+            Assert.NotEqual(default, orderResponse.ExecutedPrice);
+            Assert.Equal(orderResponse.Quantity, orderRequest.Quantity);
+            Assert.NotEqual(default, orderResponse.Created);
+            Assert.NotEmpty(orderResponse.Trades);
+
+            var trade = orderResponse.Trades.Single();
+            Assert.NotEmpty(trade.TradeId);
+            Assert.NotEqual(default, trade.TradeId);
+            Assert.Equal(trade.Instrument, orderRequest.Instrument);
+            Assert.Equal(trade.Side, orderRequest.Side);
+            Assert.NotEqual(default, trade.Price);
+            Assert.Equal(trade.Quantity, orderRequest.Quantity);
+            Assert.Equal(trade.Order, orderResponse.OrderId);
+            Assert.NotEqual(orderResponse.Created, trade.Created);
+            Assert.Null(trade.RfqId);
         }
 
         //[Fact]

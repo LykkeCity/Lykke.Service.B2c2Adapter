@@ -5,6 +5,8 @@
         None = 0,
 
         /// Fill Or Kill.
-        FOK = 1
+        FOK = 1,
+
+        MKT = 2
     }
 }
