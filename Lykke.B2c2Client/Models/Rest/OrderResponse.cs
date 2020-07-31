@@ -21,17 +21,17 @@ namespace Lykke.B2c2Client.Models.Rest
         public Side Side { get; set; }
 
         [JsonProperty("price")]
-        public double Price { get; set; }
+        public decimal? Price { get; set; }
 
         /// The field executed_price, in the response, will contain the price at which the trade(s) has(ve) been executed,
         /// or null if the order was rejected.
         [JsonProperty("executed_price")]
-        public double ExecutedPrice { get; set; }
+        public decimal ExecutedPrice { get; set; }
 
         /// Quantity in base currency (maximum 4 decimals).
         /// The sum of the trades quantity should always be equal to the quantity of the order.
         [JsonProperty("quantity")]
-        public double Quantity { get; set; }
+        public decimal Quantity { get; set; }
 
         /// For SPOT trading, the list will always contain one element. For CFD trading, it may contain more.
         [JsonProperty("trades")]
