@@ -37,7 +37,10 @@ namespace Lykke.B2c2Client
         public async Task<IReadOnlyDictionary<string, decimal>> BalanceAsync(CancellationToken ct = default(CancellationToken))
         {
             var requestId = Guid.NewGuid();
+
             _log.Info("balance - request", requestId);
+
+            var responseStr = string.Empty;
 
             try
             {
@@ -45,8 +48,9 @@ namespace Lykke.B2c2Client
                 {
                     var status = response.StatusCode;
                     
-                    var responseStr = await response.Content.ReadAsStringAsync();
-                    _log.Info($"balance - response: {responseStr}", requestId);
+                    responseStr = await response.Content.ReadAsStringAsync();
+                    
+                    _log.Info("balance - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
 
@@ -57,7 +61,8 @@ namespace Lykke.B2c2Client
             }
             catch (Exception e)
             {
-                _log.Info($"balance - response exception: {e}", requestId);
+                _log.Error(e, "balance - response exception", new { RequestId = requestId, Response = responseStr });
+
                 throw;
             }
         }
@@ -65,7 +70,10 @@ namespace Lykke.B2c2Client
         public async Task<IReadOnlyCollection<Instrument>> InstrumentsAsync(CancellationToken ct = default(CancellationToken))
         {
             var requestId = Guid.NewGuid();
+
             _log.Info("instruments - request", requestId);
+
+            var responseStr = string.Empty;
 
             try
             {
@@ -73,8 +81,9 @@ namespace Lykke.B2c2Client
                 {
                     var status = response.StatusCode;
 
-                    var responseStr = await response.Content.ReadAsStringAsync();
-                    _log.Info($"instruments - response: {responseStr}", requestId);
+                    responseStr = await response.Content.ReadAsStringAsync();
+                    
+                    _log.Info("instruments - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
 
@@ -85,7 +94,8 @@ namespace Lykke.B2c2Client
             }
             catch (Exception e)
             {
-                _log.Info($"instruments - response exception: {e}", requestId);
+                _log.Error(e, "instruments - response exception", new { RequestId = requestId, Response = responseStr });
+
                 throw;
             }
         }
@@ -95,7 +105,10 @@ namespace Lykke.B2c2Client
             if (requestForQuoteRequest == null) throw new ArgumentNullException(nameof(requestForQuoteRequest));
 
             var requestId = Guid.NewGuid();
-            _log.Info($"request_for_quote - request: {JsonConvert.SerializeObject(requestForQuoteRequest)}", requestId);
+
+            _log.Info("request for quote - request", requestForQuoteRequest);
+
+            var responseStr = string.Empty;
 
             try
             {
@@ -103,8 +116,9 @@ namespace Lykke.B2c2Client
                 {
                     var status = response.StatusCode;
 
-                    var responseStr = await response.Content.ReadAsStringAsync();
-                    _log.Info($"request_for_quote - response: {responseStr}", requestId);
+                    responseStr = await response.Content.ReadAsStringAsync();
+                    
+                    _log.Info("request for quote - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
 
@@ -119,7 +133,8 @@ namespace Lykke.B2c2Client
             }
             catch (Exception e)
             {
-                _log.Info($"request_for_quote - response exception: {e}", requestId);
+                _log.Error(e, "request for quote - response exception", new { RequestId = requestId, Response = responseStr });
+                
                 throw;
             }
         }
@@ -129,7 +144,10 @@ namespace Lykke.B2c2Client
             if (orderRequest == null) throw new ArgumentNullException(nameof(orderRequest));
 
             var requestId = Guid.NewGuid();
-            _log.Info($"order - request: {JsonConvert.SerializeObject(orderRequest)}", requestId);
+
+            _log.Info("order - request", orderRequest);
+
+            var responseStr = string.Empty;
 
             try
             {
@@ -137,8 +155,9 @@ namespace Lykke.B2c2Client
                 {
                     var status = response.StatusCode;
 
-                    var responseStr = await response.Content.ReadAsStringAsync();
-                    _log.Info($"order - response: {responseStr}", requestId);
+                    responseStr = await response.Content.ReadAsStringAsync();
+
+                    _log.Info("order - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
 
@@ -153,7 +172,8 @@ namespace Lykke.B2c2Client
             }
             catch (Exception e)
             {
-                _log.Info($"order - response exception: {e}", requestId);
+                _log.Error(e, "order - response exception", new { RequestId = requestId, Response = responseStr });
+
                 throw;
             }
         }
@@ -163,7 +183,10 @@ namespace Lykke.B2c2Client
             if (tradeRequest == null) throw new ArgumentNullException(nameof(tradeRequest));
 
             var requestId = Guid.NewGuid();
-            _log.Info($"trade - request: {JsonConvert.SerializeObject(tradeRequest)}", requestId);
+
+            _log.Info("trade - request", tradeRequest);
+
+            var responseStr = string.Empty;
 
             try
             {
@@ -171,8 +194,9 @@ namespace Lykke.B2c2Client
                 {
                     var status = response.StatusCode;
 
-                    var responseStr = await response.Content.ReadAsStringAsync();
-                    _log.Info($"trade - response: {responseStr}", requestId);
+                    responseStr = await response.Content.ReadAsStringAsync();
+
+                    _log.Info("trade - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
 
@@ -183,7 +207,8 @@ namespace Lykke.B2c2Client
             }
             catch (Exception e)
             {
-                _log.Info($"trade - response exception: {e}", requestId);
+                _log.Error(e, "trade - response exception", new { RequestId = requestId, Response = responseStr });
+
                 throw;
             }
         }
@@ -191,7 +216,10 @@ namespace Lykke.B2c2Client
         public async Task<List<TradeLog>> GetTradeHistoryAsync(int offset = 0, int limit = 50, CancellationToken ct = default(CancellationToken))
         {
             var requestId = Guid.NewGuid();
+
             _log.Info("trade history - request", requestId);
+
+            var responseStr = string.Empty;
 
             try
             {
@@ -199,8 +227,9 @@ namespace Lykke.B2c2Client
                 {
                     var status = response.StatusCode;
 
-                    var responseStr = await response.Content.ReadAsStringAsync();
-                    _log.Info("trade history - response", requestId);
+                    responseStr = await response.Content.ReadAsStringAsync();
+
+                    _log.Info("trade history - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
 
@@ -211,7 +240,11 @@ namespace Lykke.B2c2Client
             }
             catch (Exception e)
             {
-                _log.Info($"trade history - response exception: {e}", requestId);
+                _log.Error(e, "trade history - response exception", new {
+                    RequestId = requestId,
+                    Response = responseStr
+                });
+
                 throw;
             }
         }
@@ -250,14 +283,17 @@ namespace Lykke.B2c2Client
                 return;
 
             ErrorResponse errorResponse;
+
             try
             {
                 errorResponse = JsonConvert.DeserializeObject<ErrorResponse>(response);
+
                 errorResponse.Status = status;
             }
             catch (Exception e)
             {
-                var message = $"Can't deserialize error response, status: {(int)status} {status.ToString()}, guid: {guid}, response: {response}";
+                var message = $"Can't deserialize error response, status: {(int)status} {status}, guid: {guid}, response: {response}";
+
                 throw new B2c2RestException(message, e, guid);
             }
 
