@@ -23,7 +23,6 @@ namespace Lykke.Service.B2c2Adapter.Services
         private TimerTrigger _timer;
         private readonly object _gate = new object();
         private bool _isActiveWork = false;
-        private int offset = 0;
 
         public TradeHistoryService(IB2С2RestClient b2C2RestClient, string sqlConnString, bool enableAutoUpdate, ILogFactory logFactory)
         {
@@ -79,12 +78,15 @@ namespace Lykke.Service.B2c2Adapter.Services
             if (!StartWork())
                 return;
 
+            var offset = 0;
+            var page = 100;
+
             try
             {
                 using (var context = CreateContext())
                 {
                     // Update trades from last time
-                    var data = await _b2C2RestClient.GetTradeHistoryAsync(offset, 10, ct);
+                    var data = await _b2C2RestClient.GetTradeHistoryAsync(offset, page, ct);
 
                     var added = 0;
                     do
@@ -103,7 +105,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
                         await context.SaveChangesAsync(ct);
                         offset += data.Count;
-                        data = await _b2C2RestClient.GetTradeHistoryAsync(offset, 10, ct);
+                        data = await _b2C2RestClient.GetTradeHistoryAsync(offset, page, ct);
                     } while (added > 0);
                 }
             }
