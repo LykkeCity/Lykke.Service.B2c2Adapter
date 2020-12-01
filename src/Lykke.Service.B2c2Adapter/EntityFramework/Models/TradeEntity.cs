@@ -30,6 +30,8 @@ namespace Lykke.Service.B2c2Adapter.EntityFramework.Models
 
         public decimal Price { get; set; }
 
+        public string User { get; set; }
+
         public DateTime Created { get; set; }
 
         public void Update(TradeLog trade)
@@ -40,6 +42,7 @@ namespace Lykke.Service.B2c2Adapter.EntityFramework.Models
             Direction = trade.Direction;
             AssetPair = trade.AssetPair;
             Price = trade.Price;
+            User = trade.User;
             Created = trade.Created;
         }
     }

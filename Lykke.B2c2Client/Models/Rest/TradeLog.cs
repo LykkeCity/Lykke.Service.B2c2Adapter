@@ -23,6 +23,9 @@ namespace Lykke.B2c2Client.Models.Rest
         [JsonProperty("price")]
         public decimal Price { get; set; }
 
+        [JsonProperty("user")]
+        public string User { get; set; }
+
         [JsonProperty("created")]
         public DateTime Created { get; set; }
     }
