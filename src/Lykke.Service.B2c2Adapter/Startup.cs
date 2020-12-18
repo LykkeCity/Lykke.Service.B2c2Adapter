@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using Lykke.Common.Api.Contract.Responses;
+using Prometheus;
 
 namespace Lykke.Service.B2c2Adapter
 {
@@ -40,6 +41,8 @@ namespace Lykke.Service.B2c2Adapter
                 options.SwaggerOptions = _swaggerOptions;
                 options.DefaultErrorHandler = exception => ErrorResponse.Create(exception.Message);
             });
+
+            app.UseMetricServer();
         }
     }
 }

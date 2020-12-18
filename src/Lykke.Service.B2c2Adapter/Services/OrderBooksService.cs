@@ -16,6 +16,7 @@ using Lykke.Common.ExchangeAdapter.Contracts;
 using Lykke.Common.Log;
 using Lykke.Service.B2c2Adapter.RabbitMq.Publishers;
 using Lykke.Service.B2c2Adapter.Settings;
+using Lykke.Service.B2c2Adapter.Utils;
 
 namespace Lykke.Service.B2c2Adapter.Services
 {
@@ -271,9 +272,30 @@ namespace Lykke.Service.B2c2Adapter.Services
                 return;
             }
 
+            InternalMetrics.OrderBookOutCount
+                .WithLabels(orderBook.Asset)
+                .Inc();
+
+            InternalMetrics.OrderBookOutDelayMilliseconds
+                .WithLabels(orderBook.Asset)
+                .Set((DateTime.UtcNow - orderBook.Timestamp).TotalMilliseconds);
+
             await _orderBookPublisher.PublishAsync(orderBook);
 
             var tickPrice = TickPrice.FromOrderBook(orderBook);
+
+            InternalMetrics.QuoteOutCount
+                .WithLabels(tickPrice.Asset)
+                .Inc();
+
+            InternalMetrics.QuoteOutSidePrice
+                .WithLabels(tickPrice.Asset, "ask")
+                .Set((double) tickPrice.Ask);
+
+            InternalMetrics.QuoteOutSidePrice
+                .WithLabels(tickPrice.Asset, "bid")
+                .Set((double) tickPrice.Bid);
+
             await _tickPricePublisher.PublishAsync(tickPrice);
         }
 
