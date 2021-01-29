@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Linq;
+using System.Net.Http;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Models.Rest;
 using Lykke.B2c2Client.Settings;
 using Lykke.Logs;
+using Moq;
 using Xunit;
 
 namespace Lykke.Service.B2c2Adapter.Tests
@@ -12,7 +14,7 @@ namespace Lykke.Service.B2c2Adapter.Tests
     {
         private const string Url = "https://api.uat.b2c2.net";
         private const string Token = "";
-        private readonly IB2С2RestClient _restClient = new B2С2RestClient(new B2C2ClientSettings(Url, Token), LogFactory.Create());
+        private readonly IB2С2RestClient _restClient = new B2С2RestClient(new B2C2ClientSettings(Url, Token), new Mock<IHttpClientFactory>().Object, LogFactory.Create());
 
         //[Fact]
         public async void InstrumentsTest()
@@ -27,7 +29,7 @@ namespace Lykke.Service.B2c2Adapter.Tests
         public async void BalanceTest()
         {
             var result = await _restClient.BalanceAsync();
-            
+
             Assert.NotEmpty(result);
             Assert.DoesNotContain(result, x => string.IsNullOrEmpty(x.Key));
         }
