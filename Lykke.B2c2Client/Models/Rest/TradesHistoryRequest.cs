@@ -8,6 +8,5 @@ namespace Lykke.B2c2Client.Models.Rest
         public DateTime? CreatedAfter { get; set; }
         public string Instrument { get; set; }
         public DateTime? Since { get; set; }
-        public int Offset { get; set; }
     }
 }

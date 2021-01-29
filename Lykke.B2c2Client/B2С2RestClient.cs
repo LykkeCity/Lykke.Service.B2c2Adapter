@@ -318,10 +318,6 @@ namespace Lykke.B2c2Client
                         param.Add("since", request.Since.Value.ToString("yyyy-MM-ddThh:mm:ss"));
                     }
 
-                    if (request.Offset > 0)
-                    {
-                        param.Add("offset", Math.Max(50000, request.Offset).ToString());
-                    }
                     if (!string.IsNullOrEmpty(request.Cursor))
                     {
                         param.Add("cursor", request.Cursor);
@@ -390,11 +386,6 @@ namespace Lykke.B2c2Client
                     if (request.Since.HasValue)
                     {
                         param.Add("since", request.Since.Value.ToString("yyyy-MM-ddThh:mm:ss"));
-                    }
-
-                    if (request.Offset > 0)
-                    {
-                        param.Add("offset", Math.Max(50000, request.Offset).ToString());
                     }
 
                     if (!string.IsNullOrEmpty(request.Cursor))

@@ -12,7 +12,6 @@ namespace Lykke.B2c2Client.Models.Rest
         public string Currency { get; set; }
         public LedgerType? Type { get; set; }
         public DateTime? Since { get; set; }
-        public int Offset { get; set; }
     }
 
     [JsonConverter(typeof(StringEnumConverter))]
