@@ -16,7 +16,7 @@
     <PackageReference Include="Autofac.Core.NonPublicProperty" Version="1.0.0" />
     <PackageReference Include="Lykke.Common.ExchangeAdapter" Version="3.6.0" />
     <PackageReference Include="Lykke.Logs" Version="7.4.0" />
-    <PackageReference Include="Lykke.RabbitMqBroker" Version="7.5.0" />
+    <PackageReference Include="Lykke.RabbitMqBroker" Version="7.14.1" />
     <PackageReference Include="Antares.Sdk" Version="1.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="2.1.4" />
