@@ -34,5 +34,8 @@ namespace Lykke.B2c2Client
         /// <param name="limit">Number of results (default: 50, max: 100)</param>
         /// <returns></returns>
         Task<List<LedgerLog>> GetLedgerHistoryAsync(int offset = 0, int limit = 50, CancellationToken ct = default(CancellationToken));
+
+        Task<PaginationResponse<List<LedgerLog>>> GetLedgerHistoryAsync(LedgersRequest request, CancellationToken ct = default(CancellationToken));
+        Task<PaginationResponse<List<TradeLog>>> GetTradeHistoryAsync(TradesHistoryRequest request, CancellationToken ct = default(CancellationToken));
     }
 }

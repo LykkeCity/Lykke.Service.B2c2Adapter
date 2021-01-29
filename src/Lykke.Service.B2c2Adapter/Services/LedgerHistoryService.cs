@@ -44,36 +44,61 @@ namespace Lykke.Service.B2c2Adapter.Services
             {
                 using (var context = CreateContext())
                 {
-                    var offset = 0;
-                    var data = await _b2C2RestClient.GetLedgerHistoryAsync(offset, 100);
-                    _log.Info($"Current offset={offset}; load more {data.Count}");
+                    var ledgerRequest = new LedgersRequest {Limit = 100};
+                    string transactionId = null;
 
-                    var query = $"TRUNCATE TABLE {Constants.Schema}.{Constants.LedgersTable}";
-                    _log.Info($"TRUNCATE TABLE {Constants.Schema}.{Constants.LedgersTable}");
-
-                    await context.Database.ExecuteSqlCommandAsync(query);
-
-                    var list = new HashSet<string>();
-
-                    while (data.Any())
+                    if (_enableAutoUpdate)
                     {
-                        var items = data.Select(e => new LedgerEntity(e)).Where(e => !list.Contains(e.TransactionId)).ToList();
-                        context.Ledgers.AddRange(items);
-                        await context.SaveChangesAsync();
-
-                        foreach (var i in items)
+                        var last = context.Ledgers.OrderByDescending(x => x.Created).FirstOrDefault();
+                        if (last != null)
                         {
-                            list.Add(i.TransactionId);
+                            ledgerRequest.CreatedAfter = last.Created.AddHours(-1);
+                            transactionId = last.TransactionId;
+                        }
+                    }
+
+                    var data = await _b2C2RestClient.GetLedgerHistoryAsync(ledgerRequest);
+                    _log.Info($"Current cursor = null; get data after transactionId = {(transactionId ?? "null")}; load more {data.Data.Count}");
+
+                    int totalCount = 0;
+                    bool finish = false;
+
+                    while (!finish || data.Data.Count > 0)
+                    {
+                        var items = data.Data.Select(e => new LedgerEntity(e)).ToList();
+
+                        foreach (var item in items)
+                        {
+                            if (!string.IsNullOrEmpty(transactionId) && item.TransactionId == transactionId)
+                            {
+                                finish = true;
+                                break;
+                            }
+
+                            totalCount++;
+                            context.Ledgers.Add(item);
                         }
 
-                        offset += data.Count;
+                        await context.SaveChangesAsync();
 
-                        data = await GetDataFromB2C2(offset);
+                        if (finish)
+                        {
+                            _log.Info($"Finish loading to transactionId = {transactionId}. Loaded {totalCount} records");
+                            break;
+                        }
 
-                        _log.Info($"Current offset={offset}; load more {data.Count}");
+                        ledgerRequest.Cursor = data.Next;
+                        data = await GetDataFromB2C2(ledgerRequest);
+
+                        if (string.IsNullOrEmpty(data.Next))
+                        {
+                            finish = true;
+                        }
+
+                        _log.Info($"Current cursor = {ledgerRequest.Cursor}; next cursor: {ledgerRequest.Cursor}; load more {data.Data.Count}");
                     }
-                    
-                    return offset;
+
+                    return totalCount;
                 }
             }
             finally
@@ -82,13 +107,13 @@ namespace Lykke.Service.B2c2Adapter.Services
             }
         }
 
-        private async Task<List<LedgerLog>> GetDataFromB2C2(int offset)
+        private async Task<PaginationResponse<List<LedgerLog>>> GetDataFromB2C2(LedgersRequest request)
         {
             while (true)
             {
                 try
                 {
-                    var data = await _b2C2RestClient.GetLedgerHistoryAsync(offset, 100);
+                    var data = await _b2C2RestClient.GetLedgerHistoryAsync(request);
                     return data;
                 }
                 catch (Exception ex)
@@ -117,14 +142,14 @@ namespace Lykke.Service.B2c2Adapter.Services
             {
                 using (var context = CreateContext())
                 {
-                    var offset = 0;
-                    var data = await _b2C2RestClient.GetLedgerHistoryAsync(offset, 10, ct);
+                    var ledgerRequest = new LedgersRequest {Limit = 10};
+                    var data = await _b2C2RestClient.GetLedgerHistoryAsync(ledgerRequest, ct);
 
                     var added = 0;
                     do
                     {
                         added = 0;
-                        foreach (var log in data)
+                        foreach (var log in data.Data)
                         {
                             var item = await context.Ledgers.FirstOrDefaultAsync(
                                 e => e.TransactionId == log.TransactionId, ct);
@@ -137,12 +162,12 @@ namespace Lykke.Service.B2c2Adapter.Services
                         }
 
                         await context.SaveChangesAsync(ct);
-                        offset += data.Count;
-                        data = await _b2C2RestClient.GetLedgerHistoryAsync(offset, 10, ct);
+                        ledgerRequest.Cursor = data.Next;
+                        data = await _b2C2RestClient.GetLedgerHistoryAsync(ledgerRequest, ct);
                     } while (added > 0);
                 }
             }
-            finally 
+            finally
             {
                 StopWork();
             }

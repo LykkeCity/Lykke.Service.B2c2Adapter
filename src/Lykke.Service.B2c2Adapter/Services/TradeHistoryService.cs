@@ -6,6 +6,7 @@ using Autofac;
 using Common;
 using Common.Log;
 using Lykke.B2c2Client;
+using Lykke.B2c2Client.Models.Rest;
 using Lykke.Common.Log;
 using Lykke.Service.B2c2Adapter.EntityFramework;
 using Lykke.Service.B2c2Adapter.EntityFramework.Models;
@@ -42,24 +43,62 @@ namespace Lykke.Service.B2c2Adapter.Services
             {
                 using (var context = CreateContext())
                 {
-                    var offset = 0;
-                    var data = await _b2C2RestClient.GetTradeHistoryAsync(offset, 100);
+                    var tradeRequest = new TradesHistoryRequest {Limit = 100};
+                    string tradeId = null;
 
-                    var query = $"TRUNCATE TABLE {Constants.Schema}.{Constants.TradesTable}";
-
-                    await context.Database.ExecuteSqlCommandAsync(query);
-
-                    while (data.Any())
+                    if (_enableAutoUpdate)
                     {
-                        var items = data.Select(e => new TradeEntity(e)).ToList();
-                        context.Trades.AddRange(items);
+                        var last = context.Trades.OrderByDescending(x => x.Created).FirstOrDefault();
+                        if (last != null)
+                        {
+                            tradeRequest.CreatedAfter = last.Created.AddHours(-1);
+                            tradeId = last.TradeId;
+                        }
+                    }
+
+                    var data = await _b2C2RestClient.GetTradeHistoryAsync(tradeRequest);
+
+                    _log.Info($"Current cursor = null; get data after tradeId = {(tradeId ?? "null")}; load more {data.Data.Count}");
+
+                    int totalCount = 0;
+                    bool finish = false;
+
+                    while (!finish || data.Data.Count > 0)
+                    {
+                        var items = data.Data.Select(e => new TradeEntity(e)).ToList();
+
+                        foreach (var item in items)
+                        {
+                            if (!string.IsNullOrEmpty(tradeId) && item.TradeId == tradeId)
+                            {
+                                finish = true;
+                                break;
+                            }
+
+                            totalCount++;
+                            context.Trades.Add(item);
+                        }
+
                         await context.SaveChangesAsync();
 
-                        offset += data.Count;
-                        data = await _b2C2RestClient.GetTradeHistoryAsync(offset, 100);
+                        if (finish)
+                        {
+                            _log.Info($"Finish loading to tradeId = {tradeId}. Loaded {totalCount} records");
+                            break;
+                        }
+
+                        tradeRequest.Cursor = data.Next;
+                        data = await _b2C2RestClient.GetTradeHistoryAsync(tradeRequest);
+
+                        if (string.IsNullOrEmpty(data.Next))
+                        {
+                            finish = true;
+                        }
+
+                        _log.Info($"Current cursor = {tradeRequest.Cursor}; next cursor: {tradeRequest.Cursor}; load more {data.Data.Count}");
                     }
-                    
-                    return offset;
+
+                    return totalCount;
                 }
             }
             finally
@@ -78,21 +117,18 @@ namespace Lykke.Service.B2c2Adapter.Services
             if (!StartWork())
                 return;
 
-            var offset = 0;
-            var page = 100;
-
             try
             {
                 using (var context = CreateContext())
                 {
-                    // Update trades from last time
-                    var data = await _b2C2RestClient.GetTradeHistoryAsync(offset, page, ct);
+                    var tradeRequest = new TradesHistoryRequest {Limit = 10};
+                    var data = await _b2C2RestClient.GetTradeHistoryAsync(tradeRequest, ct);
 
                     var added = 0;
                     do
                     {
                         added = 0;
-                        foreach (var log in data)
+                        foreach (var log in data.Data)
                         {
                             var item = await context.Trades.FirstOrDefaultAsync(e => e.TradeId == log.TradeId, ct);
                             if (item != null)
@@ -104,12 +140,12 @@ namespace Lykke.Service.B2c2Adapter.Services
                         }
 
                         await context.SaveChangesAsync(ct);
-                        offset += data.Count;
-                        data = await _b2C2RestClient.GetTradeHistoryAsync(offset, page, ct);
+                        tradeRequest.Cursor = data.Next;
+                        data = await _b2C2RestClient.GetTradeHistoryAsync(tradeRequest, ct);
                     } while (added > 0);
                 }
             }
-            finally 
+            finally
             {
                 StopWork();
             }

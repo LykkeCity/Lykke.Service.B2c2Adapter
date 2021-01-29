@@ -1,5 +1,5 @@
 ﻿using System.Threading.Tasks;
-using Lykke.Sdk;
+using Antares.Sdk.Services;
 using Lykke.Service.B2c2Adapter.RabbitMq.Publishers;
 using Lykke.Service.B2c2Adapter.Services;
 

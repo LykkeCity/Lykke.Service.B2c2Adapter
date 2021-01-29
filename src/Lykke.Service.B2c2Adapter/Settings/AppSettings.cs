@@ -1,5 +1,5 @@
-﻿using JetBrains.Annotations;
-using Lykke.Sdk.Settings;
+﻿using Antares.Sdk.Settings;
+using JetBrains.Annotations;
 
 namespace Lykke.Service.B2c2Adapter.Settings
 {

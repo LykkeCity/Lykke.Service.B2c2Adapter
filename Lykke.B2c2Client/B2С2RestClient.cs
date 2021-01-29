@@ -4,11 +4,14 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
+using Common;
 using Common.Log;
 using Lykke.B2c2Client.Exceptions;
 using Lykke.B2c2Client.Models.Rest;
 using Lykke.B2c2Client.Settings;
 using Lykke.Common.Log;
+using Microsoft.AspNetCore.WebUtilities;
 using Newtonsoft.Json;
 
 namespace Lykke.B2c2Client
@@ -18,7 +21,10 @@ namespace Lykke.B2c2Client
         private readonly HttpClient _httpClient;
         private readonly ILog _log;
 
-        public B2С2RestClient(B2C2ClientSettings settings, ILogFactory logFactory)
+        public B2С2RestClient(
+            B2C2ClientSettings settings,
+            IHttpClientFactory clientFactory,
+            ILogFactory logFactory)
         {
             if (settings == null) throw new NullReferenceException(nameof(settings));
             var url = settings.Url;
@@ -29,8 +35,7 @@ namespace Lykke.B2c2Client
             if (logFactory == null) throw new NullReferenceException(nameof(logFactory));
 
             url = url[url.Length - 1] == '/' ? url.Substring(0, url.Length - 1) : url;
-            _httpClient = new HttpClient { BaseAddress = new Uri(url) };
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Token {authorizationToken}");
+            _httpClient = clientFactory.CreateClient(ClientNames.B2C2ClientName);
             _log = logFactory.CreateLog(this);
         }
 
@@ -47,9 +52,9 @@ namespace Lykke.B2c2Client
                 using (var response = await _httpClient.GetAsync("balance/", ct))
                 {
                     var status = response.StatusCode;
-                    
+
                     responseStr = await response.Content.ReadAsStringAsync();
-                    
+
                     _log.Info("balance - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
@@ -82,7 +87,7 @@ namespace Lykke.B2c2Client
                     var status = response.StatusCode;
 
                     responseStr = await response.Content.ReadAsStringAsync();
-                    
+
                     _log.Info("instruments - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
@@ -117,7 +122,7 @@ namespace Lykke.B2c2Client
                     var status = response.StatusCode;
 
                     responseStr = await response.Content.ReadAsStringAsync();
-                    
+
                     _log.Info("request for quote - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
@@ -134,7 +139,7 @@ namespace Lykke.B2c2Client
             catch (Exception e)
             {
                 _log.Error(e, "request for quote - response exception", new { RequestId = requestId, Response = responseStr });
-                
+
                 throw;
             }
         }
@@ -275,6 +280,185 @@ namespace Lykke.B2c2Client
                 _log.Info($"ledger history - response exception: {e}", requestId);
                 throw;
             }
+        }
+
+        public async Task<PaginationResponse<List<LedgerLog>>> GetLedgerHistoryAsync(LedgersRequest request, CancellationToken ct = default(CancellationToken))
+        {
+            var requestId = Guid.NewGuid();
+            _log.Info("ledger history - request", context: $"requestId: {requestId}, request: {request?.ToJson()}");
+
+            try
+            {
+                var param = new Dictionary<string, string>();
+
+                if (request != null)
+                {
+                    if (request.CreatedAfter.HasValue)
+                    {
+                        param.Add("created__gte", request.CreatedAfter.Value.ToString("yyyy-MM-ddThh:mm:ss"));
+                    }
+
+                    if (request.CreatedBefore.HasValue)
+                    {
+                        param.Add("created__lt", request.CreatedBefore.Value.ToString("yyyy-MM-ddThh:mm:ss"));
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Currency))
+                    {
+                        param.Add("currency", request.Currency);
+                    }
+
+                    if (request.Type.HasValue)
+                    {
+                        param.Add("type", request.Type.ToString());
+                    }
+
+                    if (request.Since.HasValue)
+                    {
+                        param.Add("since", request.Since.Value.ToString("yyyy-MM-ddThh:mm:ss"));
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Cursor))
+                    {
+                        param.Add("cursor", request.Cursor);
+                    }
+                }
+
+                param.Add("limit", Math.Max(100, request?.Limit ?? 50).ToString());
+
+                var ledgerUrl = new Uri(QueryHelpers.AddQueryString("ledger/", param), UriKind.Relative).ToString();
+
+                using var response = await _httpClient.GetAsync(ledgerUrl, ct);
+
+                var status = response.StatusCode;
+
+                var responseStr = await response.Content.ReadAsStringAsync();
+
+                CheckForError(responseStr, status, requestId);
+
+                var data = JsonConvert.DeserializeObject<List<LedgerLog>>(responseStr);
+
+                var result = new PaginationResponse<List<LedgerLog>> {Data = data};
+
+                if (response.Headers.TryGetValues("link", out var links))
+                {
+                    (result.Next, result.Previous) = GetCursors(links);
+                }
+
+                return result;
+            }
+            catch (Exception e)
+            {
+                _log.Info($"ledger history - response exception: {e}", requestId);
+                throw;
+            }
+        }
+
+        public async Task<PaginationResponse<List<TradeLog>>> GetTradeHistoryAsync(TradesHistoryRequest request, CancellationToken ct = default(CancellationToken))
+        {
+            var requestId = Guid.NewGuid();
+
+            _log.Info("trade history - request", context: $"requestId: {requestId}, request: {request?.ToJson()}");
+
+            var responseStr = string.Empty;
+
+            try
+            {
+                var param = new Dictionary<string, string>();
+
+                if (request != null)
+                {
+                    if (request.CreatedAfter.HasValue)
+                    {
+                        param.Add("created__gte", request.CreatedAfter.Value.ToString("yyyy-MM-ddThh:mm:ss"));
+                    }
+
+                    if (request.CreatedBefore.HasValue)
+                    {
+                        param.Add("created__lt", request.CreatedBefore.Value.ToString("yyyy-MM-ddThh:mm:ss"));
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Instrument))
+                    {
+                        param.Add("instrument", request.Instrument);
+                    }
+
+                    if (request.Since.HasValue)
+                    {
+                        param.Add("since", request.Since.Value.ToString("yyyy-MM-ddThh:mm:ss"));
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Cursor))
+                    {
+                        param.Add("cursor", request.Cursor);
+                    }
+                }
+
+                param.Add("limit", Math.Max(100, request?.Limit ?? 50).ToString());
+
+                var tradeUrl = new Uri(QueryHelpers.AddQueryString("trade/", param), UriKind.Relative).ToString();
+
+                using var response = await _httpClient.GetAsync(tradeUrl, ct);
+
+                var status = response.StatusCode;
+
+                responseStr = await response.Content.ReadAsStringAsync();
+
+                _log.Info("trade history - response", new { RequestId = requestId, Response = responseStr });
+
+                CheckForError(responseStr, status, requestId);
+
+                var data = JsonConvert.DeserializeObject<List<TradeLog>>(responseStr);
+
+                var result = new PaginationResponse<List<TradeLog>> {Data = data};
+
+                if (response.Headers.TryGetValues("link", out var links))
+                {
+                    (result.Next, result.Previous) = GetCursors(links);
+                }
+
+                return result;
+            }
+            catch (Exception e)
+            {
+                _log.Error(e, "trade history - response exception", new {
+                    RequestId = requestId,
+                    Response = responseStr
+                });
+
+                throw;
+            }
+        }
+
+        private (string, string) GetCursors(IEnumerable<string> values)
+        {
+            string next = null;
+            string prev = null;
+
+            foreach (var value in values)
+            {
+                var links = value.Split(new[] {','}, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var link in links)
+                {
+                    var data = link.Replace("<", string.Empty).Replace(">", string.Empty);
+                    var parts = data.Split(new []{';'}, StringSplitOptions.RemoveEmptyEntries);
+
+                    if (parts.Length == 2)
+                    {
+                        var cursor = HttpUtility.ParseQueryString(new Uri(parts[0]).Query).Get("cursor");
+                        if (parts[1].Contains("next"))
+                        {
+                            next = cursor;
+                        }
+                        else
+                        {
+                            prev = cursor;
+                        }
+                    }
+                }
+            }
+
+            return (next, prev);
         }
 
         private void CheckForError(string response, HttpStatusCode status, Guid guid)

@@ -1,5 +1,5 @@
-﻿using Lykke.Sdk;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using Antares.Sdk;
 
 namespace Lykke.Service.B2c2Adapter
 {

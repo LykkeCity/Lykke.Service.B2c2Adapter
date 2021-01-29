@@ -1,9 +1,9 @@
-﻿using Autofac;
+﻿using Antares.Sdk.Services;
+using Autofac;
 using Autofac.Core.NonPublicProperty;
 using JetBrains.Annotations;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Settings;
-using Lykke.Sdk;
 using Lykke.Service.B2c2Adapter.Managers;
 using Lykke.Service.B2c2Adapter.RabbitMq.Publishers;
 using Lykke.Service.B2c2Adapter.Services;
