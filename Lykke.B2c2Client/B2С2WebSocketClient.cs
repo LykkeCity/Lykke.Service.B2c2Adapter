@@ -273,7 +273,7 @@ namespace Lykke.B2c2Client
 
                 return;
             }
-            
+
             var result = jToken.ToObject<SubscribeMessage>();
             lock (_sync)
             {
@@ -281,8 +281,8 @@ namespace Lykke.B2c2Client
                 if (!_awaitingSubscriptions.ContainsKey(instrument))
                     _log.Warning($"Subscriptions doesn't have element with '{instrument}.", tag);
 
-                _awaitingSubscriptions.Remove(instrument, out var subscription);
-                
+                _awaitingSubscriptions.TryRemove(instrument, out var subscription);
+
                 if (_instrumentsHandlers.ContainsKey(instrument))
                     subscription.TaskCompletionSource.TrySetException(new B2c2WebSocketException($"Attempt to second subscription to {instrument}."));
 
@@ -319,7 +319,7 @@ namespace Lykke.B2c2Client
 
                 return;
             }
-                
+
             lock (_sync)
             {
                 handler = _instrumentsHandlers[result.Instrument];
@@ -342,7 +342,7 @@ namespace Lykke.B2c2Client
                 lock (_sync)
                 {
                     var instrument = _awaitingUnsubscriptions.Where(x => x.Value.Tag == tag).Select(x => x.Key).Single();
-                    _awaitingUnsubscriptions.Remove(instrument, out var value);
+                    _awaitingUnsubscriptions.TryRemove(instrument, out var value);
                     value.TaskCompletionSource.TrySetException(
                         new B2c2WebSocketException($"{nameof(UnsubscribeMessage)}.{nameof(UnsubscribeMessage.Success)} == false. {jToken}"));
 
@@ -359,13 +359,13 @@ namespace Lykke.B2c2Client
                 if (!_awaitingUnsubscriptions.ContainsKey(instrument))
                     _log.Warning($"Can't unsubscribe from '{instrument}', subscription does not exist. {jToken}", tag);
 
-                _awaitingUnsubscriptions.Remove(instrument, out var subscription);
+                _awaitingUnsubscriptions.TryRemove(instrument, out var subscription);
 
                 if (_instrumentsHandlers.ContainsKey(result.Instrument))
                     subscription.TaskCompletionSource.TrySetException(
                         new B2c2WebSocketException($"Attempt to second subscription to {result.Instrument}."));
 
-                _instrumentsHandlers.Remove(instrument, out _);
+                _instrumentsHandlers.TryRemove(instrument, out _);
 
                 subscription.TaskCompletionSource.TrySetResult(0);
 
@@ -446,7 +446,7 @@ namespace Lykke.B2c2Client
         protected virtual void Dispose(bool disposing)
         {
             if (!disposing) return;
-            
+
             _clientWebSocket?.Abort();
             _clientWebSocket?.Dispose();
             _clientWebSocket = null;

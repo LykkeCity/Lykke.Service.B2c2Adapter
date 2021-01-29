@@ -2,7 +2,7 @@
 using Lykke.Service.B2c2Adapter.Services;
 using Lykke.Service.B2c2Adapter.Settings;
 using Microsoft.AspNetCore.Mvc;
-using Swashbuckle.AspNetCore.SwaggerGen;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Lykke.Service.B2c2Adapter.Controllers
 {

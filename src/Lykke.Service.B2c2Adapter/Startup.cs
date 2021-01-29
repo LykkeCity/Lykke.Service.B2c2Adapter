@@ -1,10 +1,14 @@
-﻿using JetBrains.Annotations;
-using Lykke.Sdk;
+﻿using System;
+using JetBrains.Annotations;
 using Lykke.Service.B2c2Adapter.Settings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using System;
+using Antares.Sdk;
+using Autofac;
+using Lykke.B2c2Client.Settings;
 using Lykke.Common.Api.Contract.Responses;
+using Lykke.SettingsReader;
+using Microsoft.Extensions.Configuration;
 using Prometheus;
 
 namespace Lykke.Service.B2c2Adapter
@@ -18,10 +22,13 @@ namespace Lykke.Service.B2c2Adapter
             ApiVersion = "v1"
         };
 
+        private IReloadingManagerWithConfiguration<AppSettings> _settings;
+        private LykkeServiceOptions<AppSettings> _lykkeOptions;
+
         [UsedImplicitly]
-        public IServiceProvider ConfigureServices(IServiceCollection services)
+        public void ConfigureServices(IServiceCollection services)
         {
-            return services.BuildServiceProvider<AppSettings>(options =>
+            (_lykkeOptions, _settings) = services.ConfigureServices<AppSettings>(options =>
             {
                 options.SwaggerOptions = _swaggerOptions;
 
@@ -30,6 +37,13 @@ namespace Lykke.Service.B2c2Adapter
                     logs.AzureTableName = "B2c2AdapterLog";
                     logs.AzureTableConnectionStringResolver = settings => settings.B2c2AdapterService.Db.LogsConnString;
                 };
+            });
+
+            services.AddHttpClient(ClientNames.B2C2ClientName, client =>
+            {
+                client.BaseAddress = new Uri(_settings.CurrentValue.B2c2AdapterService.RestUrl);
+                client.DefaultRequestHeaders.Add("Authorization",
+                    $"Token {_settings.CurrentValue.B2c2AdapterService.AuthorizationToken}");
             });
         }
 
@@ -43,6 +57,16 @@ namespace Lykke.Service.B2c2Adapter
             });
 
             app.UseMetricServer();
+        }
+
+        [UsedImplicitly]
+        public void ConfigureContainer(ContainerBuilder builder)
+        {
+            var configurationRoot = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .Build();
+
+            builder.ConfigureContainerBuilder(_lykkeOptions, configurationRoot, _settings);
         }
     }
 }
