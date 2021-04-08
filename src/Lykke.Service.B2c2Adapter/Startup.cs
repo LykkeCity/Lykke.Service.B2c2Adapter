@@ -7,6 +7,7 @@ using Antares.Sdk;
 using Autofac;
 using Lykke.B2c2Client.Settings;
 using Lykke.Common.Api.Contract.Responses;
+using Lykke.Service.B2c2Adapter.Grpc;
 using Lykke.SettingsReader;
 using Microsoft.Extensions.Configuration;
 using Prometheus;
@@ -45,6 +46,9 @@ namespace Lykke.Service.B2c2Adapter
                 client.DefaultRequestHeaders.Add("Authorization",
                     $"Token {_settings.CurrentValue.B2c2AdapterService.AuthorizationToken}");
             });
+
+            services.AddGrpc();
+            services.AddGrpcReflection();
         }
 
         [UsedImplicitly]
@@ -57,6 +61,11 @@ namespace Lykke.Service.B2c2Adapter
             });
 
             app.UseMetricServer();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapGrpcReflectionService();
+                endpoints.MapGrpcService<PrivateService>();
+            });
         }
 
         [UsedImplicitly]
