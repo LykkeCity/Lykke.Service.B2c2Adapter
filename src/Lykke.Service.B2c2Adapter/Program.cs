@@ -8,7 +8,7 @@ namespace Lykke.Service.B2c2Adapter
         public static async Task Main(string[] args)
         {
 #if DEBUG
-            await LykkeStarter.Start<Startup>(true);
+            await LykkeStarter.Start<Startup>(true, 5000, 5001);
 #else
             await LykkeStarter.Start<Startup>(false);
 #endif
