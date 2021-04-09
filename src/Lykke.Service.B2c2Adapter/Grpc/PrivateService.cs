@@ -46,18 +46,16 @@ namespace Lykke.Service.B2c2Adapter.Grpc
                 ValidUntil = DateTime.UtcNow.AddSeconds(3)
             });
 
-            if (response == null)
-                return null;
-
             return new MarketOrderResponse
             {
                 OrderId = response.OrderId,
-                TradeId = response.Trades.FirstOrDefault()?.TradeId,
+                TradeId = response.Trades.Single().TradeId,
                 RequestId = orderId,
                 AssetPairId = request.AssetPair,
                 Price = response.ExecutedPrice.ToString(CultureInfo.InvariantCulture),
                 Size = response.Quantity.ToString(CultureInfo.InvariantCulture),
-                Timestamp = response.Created.ToUniversalTime().ToTimestamp()
+                Timestamp = response.Created.ToTimestamp(),
+                Error = ErrorCore.Ok
             };
         }
 
