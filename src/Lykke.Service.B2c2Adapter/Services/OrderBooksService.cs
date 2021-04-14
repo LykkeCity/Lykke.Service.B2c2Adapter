@@ -272,6 +272,9 @@ namespace Lykke.Service.B2c2Adapter.Services
                 return;
             }
 
+            // TODO: proper mapping in settings has to be implemented
+            orderBook.Asset = orderBook.Asset.Replace("LNK", "LINK");
+
             InternalMetrics.OrderBookOutCount
                 .WithLabels(orderBook.Asset)
                 .Inc();
