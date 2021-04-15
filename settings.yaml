@@ -9,6 +9,11 @@ B2c2AdapterService:
     AuthorizationToken:
         settings-key: B2C2AdapterService-AuthorizationToken
 
+    AssetMappings:
+        settings-key: B2C2AdapterService-AssetMappings
+        types: 
+            - Json
+
     InstrumentLevels:
         settings-key: B2C2AdapterService-InstrumentLevels
         types: 
