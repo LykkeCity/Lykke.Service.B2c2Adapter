@@ -41,6 +41,7 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly TimerTrigger _reconnectIfNeededTrigger;
         private readonly TimerTrigger _forceReconnectTrigger;
         private readonly OrderBooksServiceSettings _settings;
+        private readonly IReadOnlyDictionary<string, string> _assetMappings;
 
         public OrderBooksService(
             IB2С2RestClient b2C2RestClient,
@@ -48,6 +49,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             ITickPricePublisher tickPricePublisher,
             OrderBooksServiceSettings settings,
             B2C2ClientSettings webSocketC2ClientSettings,
+            IReadOnlyDictionary<string, string> assetMappings,
             ILogFactory logFactory)
         {
             _withWithoutSuffixMapping = new ConcurrentDictionary<string, string>();
@@ -64,14 +66,16 @@ namespace Lykke.Service.B2c2Adapter.Services
             _orderBookPublisher = orderBookPublisher ?? throw new NullReferenceException(nameof(orderBookPublisher));
             _tickPricePublisher = tickPricePublisher ?? throw new NullReferenceException(nameof(tickPricePublisher));
 
-            _logFactory = logFactory;
-            _log = logFactory.CreateLog(this);
-
             _reconnectIfNeededInterval = settings.ReconnectIfNeededInterval;
             _reconnectIfNeededTrigger = new TimerTrigger(nameof(OrderBooksService), settings.ReconnectIfNeededInterval, logFactory, ReconnectIfNeeded);
             _forceReconnectTrigger = new TimerTrigger(nameof(OrderBooksService), settings.ForceReconnectInterval, logFactory, ForceReconnect);
 
             _settings = settings;
+
+            _assetMappings = assetMappings;
+
+            _logFactory = logFactory;
+            _log = logFactory.CreateLog(this);
         }
 
         public void Start()
@@ -272,8 +276,8 @@ namespace Lykke.Service.B2c2Adapter.Services
                 return;
             }
 
-            // TODO: proper mapping in settings has to be implemented
-            orderBook.Asset = orderBook.Asset.Replace("LNK", "LINK");
+            foreach (var assetMapping in _assetMappings)
+                orderBook.Asset = orderBook.Asset.Replace(assetMapping.Key, assetMapping.Value);
 
             InternalMetrics.OrderBookOutCount
                 .WithLabels(orderBook.Asset)

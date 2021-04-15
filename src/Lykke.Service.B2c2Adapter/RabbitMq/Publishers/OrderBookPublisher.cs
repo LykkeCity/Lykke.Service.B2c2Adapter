@@ -13,14 +13,16 @@ namespace Lykke.Service.B2c2Adapter.RabbitMq.Publishers
 {
     public class OrderBookPublisher : IOrderBookPublisher, IStartable, IStopable
     {
-        private readonly PublishingSettings _settting;
+        private readonly PublishingSettings _publishingSettings;
         private RabbitMqPublisher<OrderBook> _publisher;
         private readonly ILogFactory _logFactory;
         private readonly ILog _log;
 
-        public OrderBookPublisher(PublishingSettings settting, ILogFactory logFactory)
+        public OrderBookPublisher(
+            PublishingSettings publishingSettings,
+            ILogFactory logFactory)
         {
-            _settting = settting;
+            _publishingSettings = publishingSettings;
             _logFactory = logFactory;
             _log = logFactory.CreateLog(this);
         }
@@ -30,11 +32,11 @@ namespace Lykke.Service.B2c2Adapter.RabbitMq.Publishers
             // NOTE: Read https://github.com/LykkeCity/Lykke.RabbitMqDotNetBroker/blob/master/README.md to learn
             // about RabbitMq subscriber configuration
             
-            if (!_settting.Enabled)
+            if (!_publishingSettings.Enabled)
                 return;
 
             var settings = RabbitMqSubscriptionSettings
-                .ForPublisher(_settting.ConnectionString, _settting.ExchangeName);
+                .ForPublisher(_publishingSettings.ConnectionString, _publishingSettings.ExchangeName);
 
             _publisher = new RabbitMqPublisher<OrderBook>(_logFactory, settings)
                 .SetSerializer(new JsonMessageSerializer<OrderBook>())
@@ -55,7 +57,7 @@ namespace Lykke.Service.B2c2Adapter.RabbitMq.Publishers
 
         public async Task PublishAsync(OrderBook message)
         {
-            if (_publisher == null || !_settting.Enabled)
+            if (_publisher == null || !_publishingSettings.Enabled)
                 return;
 
             try

@@ -60,6 +60,7 @@ namespace Lykke.Service.B2c2Adapter.Modules
             builder.RegisterType<OrderBooksService>()
                 .AsSelf()
                 .SingleInstance()
+                .WithParameter(TypedParameter.From(_settings.AssetMappings))
                 .WithParameter(TypedParameter.From(orderBooksServiceSettings))
                 .WithParameter(TypedParameter.From(webSocketSettings));
 
@@ -74,6 +75,7 @@ namespace Lykke.Service.B2c2Adapter.Modules
             builder.RegisterType<BalanceHistoryService>()
                 .AsSelf()
                 .SingleInstance()
+                .WithParameter(TypedParameter.From(_settings.AssetMappings))
                 .WithParameter(TypedParameter.From(_settings.Db.ReportSqlConnString))
                 .WithParameter(TypedParameter.From(_settings.EnableExportToReportDb));
 

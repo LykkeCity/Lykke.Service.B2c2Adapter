@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Autofac;
@@ -17,15 +17,24 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly IB2С2RestClient _b2C2RestClient;
         private readonly string _sqlConnString;
         private readonly bool _enableAutoUpdate;
+        private TimerTrigger _timer;
+        private readonly IReadOnlyDictionary<string, string> _assetMappings;
+
         private readonly ILogFactory _logFactory;
         private readonly ILog _log;
-        private TimerTrigger _timer;
 
-        public BalanceHistoryService(IB2С2RestClient b2C2RestClient, string sqlConnString, bool enableAutoUpdate, ILogFactory logFactory)
+        public BalanceHistoryService(
+            IB2С2RestClient b2C2RestClient,
+            string sqlConnString,
+            bool enableAutoUpdate,
+            IReadOnlyDictionary<string, string> assetMappings,
+            ILogFactory logFactory)
         {
             _b2C2RestClient = b2C2RestClient;
             _sqlConnString = sqlConnString;
             _enableAutoUpdate = enableAutoUpdate;
+            _assetMappings = assetMappings;
+
             _logFactory = logFactory;
             _log = logFactory.CreateLog(this);
         }
@@ -42,12 +51,25 @@ namespace Lykke.Service.B2c2Adapter.Services
             using (var context = CreateContext())
             {
                 var ts = DateTime.UtcNow;
-                var items = balance.Select(e => new BalanceEntity
+
+                var items = new List<BalanceEntity>();
+
+                foreach (var assetBalance in balance)
                 {
-                    Asset = e.Key,
-                    Timestamp = ts,
-                    Balance = e.Value
-                }).ToList();
+                    var assetName = assetBalance.Key;
+
+                    foreach (var assetMapping in _assetMappings)
+                        assetName = assetName.Replace(assetMapping.Key, assetMapping.Value);
+
+                    var item = new BalanceEntity
+                    {
+                        Asset = assetName,
+                        Timestamp = ts,
+                        Balance = assetBalance.Value
+                    };
+
+                    items.Add(item);
+                }
 
                 context.Balances.AddRange(items);
                 await context.SaveChangesAsync(ct);

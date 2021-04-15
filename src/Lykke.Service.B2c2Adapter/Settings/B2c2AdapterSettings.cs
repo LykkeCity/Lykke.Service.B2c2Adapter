@@ -13,6 +13,9 @@ namespace Lykke.Service.B2c2Adapter.Settings
 
         public string AuthorizationToken { get; set; }
 
+        // from, to
+        public IReadOnlyDictionary<string, string> AssetMappings { get; set; } = new Dictionary<string, string>();
+
         public IReadOnlyList<InstrumentLevels> InstrumentLevels { get; set; } = new List<InstrumentLevels>();
 
         public TimeSpan ReconnectIfNeededInterval { get; set; }
