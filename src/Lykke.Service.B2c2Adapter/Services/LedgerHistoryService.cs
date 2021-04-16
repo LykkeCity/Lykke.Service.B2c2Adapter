@@ -20,17 +20,26 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly IB2С2RestClient _b2C2RestClient;
         private readonly string _sqlConnString;
         private readonly bool _enableAutoUpdate;
-        private readonly ILogFactory _logFactory;
-        private readonly ILog _log;
         private TimerTrigger _timer;
         private readonly object _gate = new object();
         private bool _isActiveWork = false;
+        private readonly IReadOnlyDictionary<string, string> _assetMappings;
 
-        public LedgerHistoryService(IB2С2RestClient b2C2RestClient, string sqlConnString, bool enableAutoUpdate, ILogFactory logFactory)
+        private readonly ILogFactory _logFactory;
+        private readonly ILog _log;
+
+        public LedgerHistoryService(
+            IB2С2RestClient b2C2RestClient,
+            string sqlConnString,
+            bool enableAutoUpdate,
+            IReadOnlyDictionary<string, string> assetMappings,
+            ILogFactory logFactory)
         {
             _b2C2RestClient = b2C2RestClient;
             _sqlConnString = sqlConnString;
             _enableAutoUpdate = enableAutoUpdate;
+            _assetMappings = assetMappings;
+
             _logFactory = logFactory;
             _log = logFactory.CreateLog(this);
         }
@@ -65,7 +74,15 @@ namespace Lykke.Service.B2c2Adapter.Services
 
                     while (!finish || data.Data.Count > 0)
                     {
-                        var items = data.Data.Select(e => new LedgerEntity(e)).ToList();
+                        var items = new List<LedgerEntity>();
+
+                        foreach (var item in data.Data)
+                        {
+                            foreach (var assetMapping in _assetMappings)
+                                item.Currency = item.Currency.Replace(assetMapping.Key, assetMapping.Value);
+
+                            items.Add(new LedgerEntity(item));
+                        }
 
                         foreach (var item in items)
                         {
@@ -114,6 +131,13 @@ namespace Lykke.Service.B2c2Adapter.Services
                 try
                 {
                     var data = await _b2C2RestClient.GetLedgerHistoryAsync(request);
+
+                    foreach (var item in data.Data)
+                    {
+                        foreach (var assetMapping in _assetMappings)
+                            item.Currency = item.Currency.Replace(assetMapping.Key, assetMapping.Value);
+                    }
+
                     return data;
                 }
                 catch (Exception ex)
@@ -151,8 +175,12 @@ namespace Lykke.Service.B2c2Adapter.Services
                         added = 0;
                         foreach (var log in data.Data)
                         {
+                            foreach (var assetMapping in _assetMappings)
+                                log.Currency = log.Currency.Replace(assetMapping.Key, assetMapping.Value);
+
                             var item = await context.Ledgers.FirstOrDefaultAsync(
                                 e => e.TransactionId == log.TransactionId, ct);
+
                             if (item != null)
                                 continue;
 
@@ -163,6 +191,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
                         await context.SaveChangesAsync(ct);
                         ledgerRequest.Cursor = data.Next;
+
                         data = await _b2C2RestClient.GetLedgerHistoryAsync(ledgerRequest, ct);
                     } while (added > 0);
                 }

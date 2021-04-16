@@ -69,6 +69,7 @@ namespace Lykke.Service.B2c2Adapter.Modules
             builder.RegisterType<TradeHistoryService>()
                 .AsSelf()
                 .SingleInstance()
+                .WithParameter(TypedParameter.From(_settings.AssetMappings))
                 .WithParameter(TypedParameter.From(_settings.Db.ReportSqlConnString))
                 .WithParameter(TypedParameter.From(_settings.EnableExportToReportDb));
 
@@ -82,6 +83,7 @@ namespace Lykke.Service.B2c2Adapter.Modules
             builder.RegisterType<LedgerHistoryService>()
                 .AsSelf()
                 .SingleInstance()
+                .WithParameter(TypedParameter.From(_settings.AssetMappings))
                 .WithParameter(TypedParameter.From(_settings.Db.ReportSqlConnString))
                 .WithParameter(TypedParameter.From(_settings.EnableExportToReportDb));
         }
