@@ -27,5 +27,7 @@ namespace Lykke.Service.B2c2Adapter.Settings
         public bool EnableExportToReportDb { get; set; }
 
         public RabbitMqSettings RabbitMq { get; set; }
+
+        public string VenueName { get; set; }
     }
 }
