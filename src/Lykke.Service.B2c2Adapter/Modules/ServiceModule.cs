@@ -86,6 +86,8 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .WithParameter(TypedParameter.From(_settings.AssetMappings))
                 .WithParameter(TypedParameter.From(_settings.Db.ReportSqlConnString))
                 .WithParameter(TypedParameter.From(_settings.EnableExportToReportDb));
+
+            builder.RegisterInstance(_settings);
         }
     }
 }

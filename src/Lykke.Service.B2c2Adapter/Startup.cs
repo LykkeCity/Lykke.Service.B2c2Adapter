@@ -65,6 +65,7 @@ namespace Lykke.Service.B2c2Adapter
             {
                 endpoints.MapGrpcReflectionService();
                 endpoints.MapGrpcService<PrivateService>();
+                endpoints.MapGrpcService<PublicService>();
             });
         }
 

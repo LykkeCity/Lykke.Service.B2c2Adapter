@@ -8,6 +8,7 @@ using Grpc.Core;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Models.Rest;
 using Swisschain.Liquidity.ApiContract;
+using ErrorCode = Swisschain.Liquidity.ApiContract.ErrorCode;
 using Trade = Swisschain.Liquidity.ApiContract.Trade;
 
 namespace Lykke.Service.B2c2Adapter.Grpc
@@ -32,7 +33,7 @@ namespace Lykke.Service.B2c2Adapter.Grpc
 
         public override async Task<ExecuteMarketOrderResponse> ExecuteMarketOrder(MarketOrderRequest request, ServerCallContext context)
         {
-            var orderId = Guid.NewGuid().ToString();
+            var orderId = $"{((int)request.TradeTypeTag).ToString()}{request.ComponentTag}{Guid.NewGuid().ToString().Remove(0, 1 + request.ComponentTag.Length)}";
             decimal size = decimal.Parse(request.Size, CultureInfo.InvariantCulture);
 
             var response = await _b2C2RestClient.OrderAsync(new OrderRequest
@@ -56,7 +57,7 @@ namespace Lykke.Service.B2c2Adapter.Grpc
                 FilledSize = (response.Side == Side.Buy ? response.Quantity : -response.Quantity).ToString(CultureInfo.InvariantCulture),
                 CancelledSize = "0",
                 Timestamp = response.Created.ToTimestamp(),
-                Error = ErrorCore.Ok
+                Error = ErrorCode.Ok
             };
 
             result.Trades.AddRange(MapTrades(response.Trades));
@@ -78,7 +79,7 @@ namespace Lykke.Service.B2c2Adapter.Grpc
 
         public override async Task<PlaceMarketOrderResponse> PlaceMarketOrder(MarketOrderRequest request, ServerCallContext context)
         {
-            var orderId = Guid.NewGuid().ToString();
+            var orderId = $"{((int)request.TradeTypeTag).ToString()}{request.ComponentTag}{Guid.NewGuid().ToString().Remove(0, 1 + request.ComponentTag.Length)}";
             decimal size = decimal.Parse(request.Size, CultureInfo.InvariantCulture);
 
             var response = await _b2C2RestClient.OrderAsync(new OrderRequest
@@ -95,7 +96,7 @@ namespace Lykke.Service.B2c2Adapter.Grpc
 
             return new PlaceMarketOrderResponse
             {
-                Error = ErrorCore.Ok,
+                Error = ErrorCode.Ok,
                 RequestId = orderId
             };
         }

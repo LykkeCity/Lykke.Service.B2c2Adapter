@@ -1,5 +1,5 @@
 B2c2AdapterService:
-    
+
     RestUrl:
         settings-key: B2C2AdapterService-RestUrl
 
@@ -11,12 +11,12 @@ B2c2AdapterService:
 
     AssetMappings:
         settings-key: B2C2AdapterService-AssetMappings
-        types: 
+        types:
             - Json
 
     InstrumentLevels:
         settings-key: B2C2AdapterService-InstrumentLevels
-        types: 
+        types:
             - JsonArray
 
     ReconnectIfNeededInterval:
@@ -54,9 +54,12 @@ B2c2AdapterService:
             ConnectionString:
                 settings-key: RawPriceRabbitMq
                 types:
-                    - RabbitMq 
+                    - RabbitMq
             ExchangeName:
                 settings-key: B2C2AdapterService-TickPricesExchangeName
+
+    VenueName:
+        settings-key: B2C2AdapterService-VenueName
 
 SlackNotifications:
     AzureQueue:
