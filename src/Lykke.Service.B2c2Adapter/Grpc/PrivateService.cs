@@ -7,6 +7,8 @@ using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Lykke.B2c2Client;
 using Lykke.B2c2Client.Models.Rest;
+using Lykke.Service.B2c2Adapter.Settings;
+using Microsoft.Extensions.Logging;
 using Swisschain.Liquidity.ApiContract;
 using ErrorCode = Swisschain.Liquidity.ApiContract.ErrorCode;
 using Trade = Swisschain.Liquidity.ApiContract.Trade;
@@ -15,11 +17,19 @@ namespace Lykke.Service.B2c2Adapter.Grpc
 {
     public class PrivateService : PrivateGrpc.PrivateGrpcBase
     {
+        private readonly B2c2AdapterSettings _settings;
         private readonly IB2С2RestClient _b2C2RestClient;
+        private readonly ILogger<PrivateService> _logger;
 
-        public PrivateService(IB2С2RestClient b2C2RestClient)
+        public PrivateService(
+            B2c2AdapterSettings settings,
+            IB2С2RestClient b2C2RestClient,
+            ILogger<PrivateService> logger
+            )
         {
+            _settings = settings;
             _b2C2RestClient = b2C2RestClient;
+            _logger = logger;
         }
 
         public override async Task<GetBalanceResponse> GetBalance(GetBalanceRequest request, ServerCallContext context)
@@ -33,13 +43,24 @@ namespace Lykke.Service.B2c2Adapter.Grpc
 
         public override async Task<ExecuteMarketOrderResponse> ExecuteMarketOrder(MarketOrderRequest request, ServerCallContext context)
         {
+            if (!_settings.InstrumentMappings.TryGetValue(request.AssetPair, out var assetPairId))
+            {
+                _logger.LogWarning("Asset pair not found. {assetPairId}", request.AssetPair);
+
+                return new ExecuteMarketOrderResponse
+                {
+                    Error = ErrorCode.Critical,
+                    ErrorMessage = "Asset pair not found"
+                };
+            }
+
             var orderId = $"{((int)request.TradeTypeTag).ToString()}{request.ComponentTag}{Guid.NewGuid().ToString().Remove(0, 1 + request.ComponentTag.Length)}";
             decimal size = decimal.Parse(request.Size, CultureInfo.InvariantCulture);
 
             var response = await _b2C2RestClient.OrderAsync(new OrderRequest
             {
                 ClientOrderId = orderId,
-                Instrument = request.AssetPair,
+                Instrument = assetPairId,
                 Side = size > 0
                     ? Side.Buy
                     : Side.Sell,
@@ -79,13 +100,24 @@ namespace Lykke.Service.B2c2Adapter.Grpc
 
         public override async Task<PlaceMarketOrderResponse> PlaceMarketOrder(MarketOrderRequest request, ServerCallContext context)
         {
+            if (!_settings.InstrumentMappings.TryGetValue(request.AssetPair, out var assetPairId))
+            {
+                _logger.LogWarning("Asset pair not found. {assetPairId}", request.AssetPair);
+
+                return new PlaceMarketOrderResponse
+                {
+                    Error = ErrorCode.Critical,
+                    ErrorMessage = "Asset pair not found"
+                };
+
+            }
             var orderId = $"{((int)request.TradeTypeTag).ToString()}{request.ComponentTag}{Guid.NewGuid().ToString().Remove(0, 1 + request.ComponentTag.Length)}";
             decimal size = decimal.Parse(request.Size, CultureInfo.InvariantCulture);
 
             var response = await _b2C2RestClient.OrderAsync(new OrderRequest
             {
                 ClientOrderId = orderId,
-                Instrument = request.AssetPair,
+                Instrument = assetPairId,
                 Side = size > 0
                     ? Side.Buy
                     : Side.Sell,
