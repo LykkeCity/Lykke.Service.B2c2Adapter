@@ -31,6 +31,6 @@ namespace Lykke.Service.B2c2Adapter.Settings
 
         public string VenueName { get; set; }
 
-        public ConcurrentDictionary<string, string> InstrumentMappings { get; set; }
+        public IReadOnlyDictionary<string, string> InstrumentMappings { get; set; }
     }
 }
