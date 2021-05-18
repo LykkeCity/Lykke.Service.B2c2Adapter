@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using JetBrains.Annotations;
 
@@ -29,5 +30,7 @@ namespace Lykke.Service.B2c2Adapter.Settings
         public RabbitMqSettings RabbitMq { get; set; }
 
         public string VenueName { get; set; }
+
+        public ConcurrentDictionary<string, string> InstrumentMappings { get; set; }
     }
 }

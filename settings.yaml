@@ -14,6 +14,11 @@ B2c2AdapterService:
         types:
             - Json
 
+    InstrumentMappings:
+        settings-key: B2C2AdapterService-InstrumentMappings
+        types:
+            - Json
+
     InstrumentLevels:
         settings-key: B2C2AdapterService-InstrumentLevels
         types:
