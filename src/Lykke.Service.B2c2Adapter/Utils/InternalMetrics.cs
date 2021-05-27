@@ -4,6 +4,16 @@ namespace Lykke.Service.B2c2Adapter.Utils
 {
     public static class InternalMetrics
     {
+        public static readonly Counter OrderBookInCount = Metrics
+            .CreateCounter("order_book_in_count",
+                "Counter of received order books.",
+                new CounterConfiguration { LabelNames = new[] { "symbol" } });
+
+        public static readonly Gauge OrderBookInDelayMilliseconds = Metrics
+            .CreateGauge("order_book_in_delay_ms",
+                "Gauge of order books delay between original timestamp and when we received in milliseconds.",
+                new GaugeConfiguration { LabelNames = new[] { "symbol" } });
+
         public static readonly Counter OrderBookOutCount = Metrics
             .CreateCounter("order_book_out_count",
                 "Counter of sent order books.",

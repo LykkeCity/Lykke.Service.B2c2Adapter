@@ -40,14 +40,15 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly TimeSpan _reconnectIfNeededInterval;
         private readonly TimerTrigger _reconnectIfNeededTrigger;
         private readonly TimerTrigger _forceReconnectTrigger;
-        private readonly OrderBooksServiceSettings _settings;
+        private readonly B2c2AdapterSettings _settings;
+        private readonly OrderBooksServiceSettings _orderBooksServiceSettings;
         private readonly IReadOnlyDictionary<string, string> _assetMappings;
 
         public OrderBooksService(
             IB2С2RestClient b2C2RestClient,
             IOrderBookPublisher orderBookPublisher,
             ITickPricePublisher tickPricePublisher,
-            OrderBooksServiceSettings settings,
+            B2c2AdapterSettings settings,
             B2C2ClientSettings webSocketC2ClientSettings,
             IReadOnlyDictionary<string, string> assetMappings,
             ILogFactory logFactory)
@@ -57,8 +58,19 @@ namespace Lykke.Service.B2c2Adapter.Services
             _orderBooksCache = new ConcurrentDictionary<string, OrderBook>();
             _subscriptions = new ConcurrentDictionary<string, string>();
 
-            _instrumentsLevels = settings.InstrumentsLevels == null || !settings.InstrumentsLevels.Any()
-                ? throw new ArgumentOutOfRangeException(nameof(_instrumentsLevels)) : settings.InstrumentsLevels;
+            _settings = settings;
+
+            var orderBooksServiceSettings = new OrderBooksServiceSettings
+            {
+                InstrumentsLevels = settings.InstrumentLevels,
+                ReconnectIfNeededInterval = settings.ReconnectIfNeededInterval,
+                ForceReconnectInterval = settings.ForceReconnectInterval
+            };
+
+            _orderBooksServiceSettings = orderBooksServiceSettings;
+
+            _instrumentsLevels = _orderBooksServiceSettings.InstrumentsLevels == null || !_orderBooksServiceSettings.InstrumentsLevels.Any()
+                ? throw new ArgumentOutOfRangeException(nameof(_instrumentsLevels)) : _orderBooksServiceSettings.InstrumentsLevels;
 
             _b2C2RestClient = b2C2RestClient ?? throw new NullReferenceException(nameof(b2C2RestClient));
             _webSocketC2ClientSettings = webSocketC2ClientSettings ?? throw new NullReferenceException(nameof(webSocketC2ClientSettings));
@@ -69,8 +81,6 @@ namespace Lykke.Service.B2c2Adapter.Services
             _reconnectIfNeededInterval = settings.ReconnectIfNeededInterval;
             _reconnectIfNeededTrigger = new TimerTrigger(nameof(OrderBooksService), settings.ReconnectIfNeededInterval, logFactory, ReconnectIfNeeded);
             _forceReconnectTrigger = new TimerTrigger(nameof(OrderBooksService), settings.ForceReconnectInterval, logFactory, ForceReconnect);
-
-            _settings = settings;
 
             _assetMappings = assetMappings;
 
@@ -106,7 +116,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         public OrderBooksServiceSettings GetSettings()
         {
-            return _settings;
+            return _orderBooksServiceSettings;
         }
 
         private void InitializeAssetPairs()
@@ -143,13 +153,33 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private async Task HandleAsync(PriceMessage message)
         {
-            var orderBook = Convert(message);
             var instrument = _withWithoutSuffixMapping[message.Instrument];
+
+            if (!_settings.InstrumentMappings.TryGetValue(instrument, out var assetPair))
+            {
+                _log.Warning("Asset pair not found. {instrument}", instrument);
+            }
+            else
+            {
+                InternalMetrics.OrderBookInCount
+                    .WithLabels(assetPair)
+                    .Inc();
+
+                InternalMetrics.OrderBookInDelayMilliseconds
+                    .WithLabels(assetPair)
+                    .Set((DateTime.UtcNow - message.Timestamp).TotalMilliseconds);
+            }
+
+            _log.Debug("Received for the first time on B2C2 connector - {assetPair}, {timestamp}.", instrument, new DateTimeOffset(message.Timestamp).ToUnixTimeMilliseconds());
+
+            var orderBook = Convert(message);
+            
             if (_orderBooksCache.TryGetValue(instrument, out var existedOrderBook))
             {
                 if (orderBook.Timestamp > existedOrderBook.Timestamp)
                 {
                     _orderBooksCache[instrument] = orderBook;
+
                     await PublishOrderBookAndTickPrice(orderBook);
                 }
             }
@@ -279,6 +309,8 @@ namespace Lykke.Service.B2c2Adapter.Services
             foreach (var assetMapping in _assetMappings)
                 orderBook.Asset = orderBook.Asset.Replace(assetMapping.Key, assetMapping.Value);
 
+            await _orderBookPublisher.PublishAsync(orderBook);
+
             InternalMetrics.OrderBookOutCount
                 .WithLabels(orderBook.Asset)
                 .Inc();
@@ -287,7 +319,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                 .WithLabels(orderBook.Asset)
                 .Set((DateTime.UtcNow - orderBook.Timestamp).TotalMilliseconds);
 
-            await _orderBookPublisher.PublishAsync(orderBook);
+            _log.Debug("Sent from B2C2 connector to Mixer - {assetPair}, {timestamp}.", orderBook.Asset, new DateTimeOffset(orderBook.Timestamp).ToUnixTimeMilliseconds());
 
             var tickPrice = TickPrice.FromOrderBook(orderBook);
 
