@@ -155,7 +155,9 @@ namespace Lykke.Service.B2c2Adapter.Services
         {
             var instrument = _withWithoutSuffixMapping[message.Instrument];
 
-            if (!_settings.InstrumentMappings.TryGetValue(instrument, out var assetPair))
+            var assetPair = _settings.InstrumentMappings.FirstOrDefault(x => x.Value == instrument).Key;
+
+            if (string.IsNullOrWhiteSpace(assetPair))
             {
                 _log.Warning("Asset pair not found. {instrument}", instrument);
             }
