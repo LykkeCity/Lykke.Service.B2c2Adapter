@@ -1,4 +1,8 @@
 B2c2AdapterService:
+    ZeroMq:
+        settings-key: B2C2AdapterService-ZeroMq
+        types:
+            - Json
 
     RestUrl:
         settings-key: B2C2AdapterService-RestUrl
