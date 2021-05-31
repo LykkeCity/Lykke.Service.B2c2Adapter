@@ -8,7 +8,9 @@ using Lykke.Service.B2c2Adapter.Managers;
 using Lykke.Service.B2c2Adapter.RabbitMq.Publishers;
 using Lykke.Service.B2c2Adapter.Services;
 using Lykke.Service.B2c2Adapter.Settings;
+using Lykke.Service.B2c2Adapter.ZeroMq;
 using Lykke.SettingsReader;
+using Microsoft.Extensions.Hosting;
 
 namespace Lykke.Service.B2c2Adapter.Modules
 {
@@ -43,6 +45,17 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.RabbitMq.OrderBooks));
 
+            // ZeroMq publishing channel
+            builder.RegisterType<ZeroMqOrderBookPublisher>()
+                .AsSelf()
+                .As<ZeroMqOrderBookPublisher>()
+                .SingleInstance()
+                .WithParameter(TypedParameter.From(_settings.ZeroMq));
+        
+            builder.RegisterType<ZeroMqOrderPublisherDispatcher>()
+                .As<IHostedService>()
+                .SingleInstance();    
+            
             builder.RegisterType<TickPricePublisher>()
                 .AsSelf()
                 .As<ITickPricePublisher>()

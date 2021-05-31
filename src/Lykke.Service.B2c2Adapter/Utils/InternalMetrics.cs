@@ -33,5 +33,21 @@ namespace Lykke.Service.B2c2Adapter.Utils
             .CreateGauge("quote_out_side_price",
                 "Gauge of received quote side price.",
                 new GaugeConfiguration {LabelNames = new[] {"symbol", "side"}});
+        
+        public static readonly Gauge OrderBookOutDictionarySize = Metrics
+            .CreateGauge("order_book_out_dictionary_size", "Gauge of order books dictionary size.");
+        
+        public static readonly Counter MessagesOutCount = Metrics
+            .CreateCounter("messages_out_count",
+                "Counter of sent messages.",
+                new CounterConfiguration());
+        
+        public static readonly Gauge OutBatchSize = Metrics
+            .CreateGauge("out_batch_size", "Gauge of order books in a batch.");
+        
+        public static readonly Gauge OrderBookOutSidePrice = Metrics
+            .CreateGauge("order_book_out_side_price",
+                "Gauge of published order book side price.",
+                new GaugeConfiguration { LabelNames = new[] { "exchange", "symbol", "side" } });
     }
 }

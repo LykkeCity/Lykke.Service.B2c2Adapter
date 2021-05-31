@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using JetBrains.Annotations;
 
@@ -32,5 +31,7 @@ namespace Lykke.Service.B2c2Adapter.Settings
         public string VenueName { get; set; }
 
         public IReadOnlyDictionary<string, string> InstrumentMappings { get; set; }
+        
+        public ZeroMqPublishingSettings ZeroMq { get; set; }
     }
 }
