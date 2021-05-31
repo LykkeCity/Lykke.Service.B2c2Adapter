@@ -24,7 +24,9 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="2.1.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="2.1.4" />
     <PackageReference Include="prometheus-net.AspNetCore" Version="4.1.1" />
+    <PackageReference Include="Swisschain.Hedger.Mixer.ApiClient" Version="1.2.3" />
     <PackageReference Include="Swisschain.Liquidity.Trading.ApiClient" Version="1.9.0" />
+    <PackageReference Include="NetMQ" Version="4.0.1.6" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Lykke.B2c2Client\Lykke.B2c2Client.csproj" />

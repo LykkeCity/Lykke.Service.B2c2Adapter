@@ -17,6 +17,7 @@ using Lykke.Common.Log;
 using Lykke.Service.B2c2Adapter.RabbitMq.Publishers;
 using Lykke.Service.B2c2Adapter.Settings;
 using Lykke.Service.B2c2Adapter.Utils;
+using Lykke.Service.B2c2Adapter.ZeroMq;
 
 namespace Lykke.Service.B2c2Adapter.Services
 {
@@ -32,7 +33,6 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly IB2С2RestClient _b2C2RestClient;
         private IB2С2WebSocketClient _b2C2WebSocketClient;
         private readonly B2C2ClientSettings _webSocketC2ClientSettings;
-        private readonly IOrderBookPublisher _orderBookPublisher;
         private readonly ITickPricePublisher _tickPricePublisher;
         private readonly ILogFactory _logFactory;
         private readonly ILog _log;
@@ -43,10 +43,13 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly B2c2AdapterSettings _settings;
         private readonly OrderBooksServiceSettings _orderBooksServiceSettings;
         private readonly IReadOnlyDictionary<string, string> _assetMappings;
+        private readonly IOrderBookPublisher _orderBookPublisher;
+        private readonly ZeroMqOrderBookPublisher _zeroMqOrderBookPublisher;
 
         public OrderBooksService(
             IB2С2RestClient b2C2RestClient,
             IOrderBookPublisher orderBookPublisher,
+            ZeroMqOrderBookPublisher zeroMqOrderBookPublisher,
             ITickPricePublisher tickPricePublisher,
             B2c2AdapterSettings settings,
             B2C2ClientSettings webSocketC2ClientSettings,
@@ -75,7 +78,9 @@ namespace Lykke.Service.B2c2Adapter.Services
             _b2C2RestClient = b2C2RestClient ?? throw new NullReferenceException(nameof(b2C2RestClient));
             _webSocketC2ClientSettings = webSocketC2ClientSettings ?? throw new NullReferenceException(nameof(webSocketC2ClientSettings));
 
+            _zeroMqOrderBookPublisher = zeroMqOrderBookPublisher ?? throw new NullReferenceException(nameof(zeroMqOrderBookPublisher));
             _orderBookPublisher = orderBookPublisher ?? throw new NullReferenceException(nameof(orderBookPublisher));
+            
             _tickPricePublisher = tickPricePublisher ?? throw new NullReferenceException(nameof(tickPricePublisher));
 
             _reconnectIfNeededInterval = settings.ReconnectIfNeededInterval;
@@ -182,7 +187,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                 {
                     _orderBooksCache[instrument] = orderBook;
 
-                    await PublishOrderBookAndTickPrice(orderBook);
+                    await PublishOrderBookAndTickPrice(orderBook, assetPair);
                 }
             }
             else
@@ -299,7 +304,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             _log.Info("Finished subscribing.");
         }
 
-        private async Task PublishOrderBookAndTickPrice(OrderBook orderBook)
+        private async Task PublishOrderBookAndTickPrice(OrderBook orderBook, string rawAssetPair)
         {
             if (IsStale(orderBook))
             {
@@ -312,6 +317,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                 orderBook.Asset = orderBook.Asset.Replace(assetMapping.Key, assetMapping.Value);
 
             await _orderBookPublisher.PublishAsync(orderBook);
+            await _zeroMqOrderBookPublisher.PublishAsync(orderBook, rawAssetPair);
 
             InternalMetrics.OrderBookOutCount
                 .WithLabels(orderBook.Asset)
