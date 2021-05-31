@@ -106,7 +106,7 @@ namespace Lykke.Service.B2c2Adapter.ZeroMq
 
                                 publisher.SendMoreFrame(_topicName).SendFrame(messageBytes);
 
-                                _logger.Trace(string.Format("Published {0} order book to 0mq, thread #{1}", orderBooks.Count, Thread.CurrentThread.ManagedThreadId));
+                                _logger.Info(string.Format("Published {0} order book to 0mq, thread #{1}", orderBooks.Count, Thread.CurrentThread.ManagedThreadId));
 
                                 foreach (var orderBook in orderBooks)
                                 {
