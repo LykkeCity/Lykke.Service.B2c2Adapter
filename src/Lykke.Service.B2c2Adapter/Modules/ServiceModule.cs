@@ -50,6 +50,7 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .AsSelf()
                 .As<ZeroMqOrderBookPublisher>()
                 .SingleInstance()
+                .WithParameter(TypedParameter.From(_settings.VenueName))
                 .WithParameter(TypedParameter.From(_settings.ZeroMq));
         
             builder.RegisterType<ZeroMqOrderPublisherDispatcher>()
@@ -65,7 +66,6 @@ namespace Lykke.Service.B2c2Adapter.Modules
             builder.RegisterType<OrderBooksService>()
                 .AsSelf()
                 .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.VenueName))
                 .WithParameter(TypedParameter.From(_settings.AssetMappings))
                 .WithParameter(TypedParameter.From(_settings))
                 .WithParameter(TypedParameter.From(webSocketSettings));

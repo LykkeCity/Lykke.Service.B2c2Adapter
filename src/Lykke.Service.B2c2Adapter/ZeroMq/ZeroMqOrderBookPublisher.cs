@@ -18,6 +18,7 @@ namespace Lykke.Service.B2c2Adapter.ZeroMq
 {
     public class ZeroMqOrderBookPublisher
     {
+        private readonly string _venueName;
         private readonly ConcurrentDictionary<string, OrderBook> _latestOrderBooks = new();
         private readonly ManualResetEventSlim _event = new(false);
 
@@ -26,10 +27,12 @@ namespace Lykke.Service.B2c2Adapter.ZeroMq
         private readonly string _topicName;
 
         public ZeroMqOrderBookPublisher(
-            ILogFactory logFactory,
-            ZeroMqPublishingSettings orderBookPublishingSettings
-            )
+            string venueName,
+            ZeroMqPublishingSettings orderBookPublishingSettings,
+            ILogFactory logFactory)
         {
+            _venueName = venueName;
+
             _topicName = orderBookPublishingSettings.TopicName;
             
             InternalMetrics.OrderBookOutDictionarySize.Set(0);
@@ -57,7 +60,7 @@ namespace Lykke.Service.B2c2Adapter.ZeroMq
             
             var mapped = new OrderBook
             {
-                Source = orderBook.Source,
+                Source = _venueName,
                 Timestamp = orderBook.Timestamp.ToTimestamp(),
                 AssetPair = new AssetPair {Base = orderBookAsset[0], Quote = orderBookAsset[1]},
             };
