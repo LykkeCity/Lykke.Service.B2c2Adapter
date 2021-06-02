@@ -65,6 +65,7 @@ namespace Lykke.Service.B2c2Adapter.Modules
             builder.RegisterType<OrderBooksService>()
                 .AsSelf()
                 .SingleInstance()
+                .WithParameter(TypedParameter.From(_settings.VenueName))
                 .WithParameter(TypedParameter.From(_settings.AssetMappings))
                 .WithParameter(TypedParameter.From(_settings))
                 .WithParameter(TypedParameter.From(webSocketSettings));

@@ -23,7 +23,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 {
     public class OrderBooksService : IStartable, IStopable
     {
-        private const string Source = "b2c2";
+        private readonly string _venueName;
         private const string Suffix = ".SPOT";
         private readonly IReadOnlyCollection<InstrumentLevels> _instrumentsLevels;
         private readonly ConcurrentDictionary<string, string> _withWithoutSuffixMapping;
@@ -54,8 +54,11 @@ namespace Lykke.Service.B2c2Adapter.Services
             B2c2AdapterSettings settings,
             B2C2ClientSettings webSocketC2ClientSettings,
             IReadOnlyDictionary<string, string> assetMappings,
+            string venueName,
             ILogFactory logFactory)
         {
+            _venueName = venueName;
+
             _withWithoutSuffixMapping = new ConcurrentDictionary<string, string>();
             _withoutWithSuffixMapping = new ConcurrentDictionary<string, string>();
             _orderBooksCache = new ConcurrentDictionary<string, OrderBook>();
@@ -210,7 +213,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             var bids = GetOrderBookItems(priceMessage.Levels.Sell);
             var asks = GetOrderBookItems(priceMessage.Levels.Buy);
 
-            var result = new OrderBook(Source, assetPair, priceMessage.Timestamp, asks, bids);
+            var result = new OrderBook(_venueName, assetPair, priceMessage.Timestamp, asks, bids);
 
             return result;
         }
