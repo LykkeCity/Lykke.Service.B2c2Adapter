@@ -308,8 +308,8 @@ namespace Lykke.Service.B2c2Adapter.Services
 
         private void NotifyAboutDisconnect()
         {
-            var emptyOrderBook = new OrderBook(LegacySource, string.Empty, DateTime.UtcNow, Array.Empty<OrderBookItem>(), Array.Empty<OrderBookItem>());
-            _log.Info("Sending empty order book to 0mq");
+            var emptyOrderBook = new OrderBook("", string.Empty, DateTime.UtcNow, Array.Empty<OrderBookItem>(), Array.Empty<OrderBookItem>());
+            _log.Warning("Reconnect detected. Sending empty order book to 0mq.");
             _zeroMqOrderBookPublisher.PublishAsync(emptyOrderBook, "/");
         }
         
