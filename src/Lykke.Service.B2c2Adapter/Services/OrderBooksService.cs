@@ -279,6 +279,8 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             lock (_syncReconnect)
             {
+                NotifyAboutDisconnect();
+                
                 _log.Info("Disposing WebSocketClient.");
                 _b2C2WebSocketClient?.Dispose();
                 _b2C2WebSocketClient = new B2С2WebSocketClient(_webSocketC2ClientSettings, _logFactory);
@@ -304,6 +306,13 @@ namespace Lykke.Service.B2c2Adapter.Services
             _log.Info("Finished subscribing.");
         }
 
+        private void NotifyAboutDisconnect()
+        {
+            var emptyOrderBook = new OrderBook("", string.Empty, DateTime.UtcNow, Array.Empty<OrderBookItem>(), Array.Empty<OrderBookItem>());
+            _log.Warning("Reconnect detected. Sending empty order book to 0mq.");
+            _zeroMqOrderBookPublisher.PublishAsync(emptyOrderBook, "/");
+        }
+        
         private async Task PublishOrderBookAndTickPrice(OrderBook orderBook, string rawAssetPair)
         {
             if (IsStale(orderBook))
