@@ -80,7 +80,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             _zeroMqOrderBookPublisher = zeroMqOrderBookPublisher ?? throw new NullReferenceException(nameof(zeroMqOrderBookPublisher));
             _orderBookPublisher = orderBookPublisher ?? throw new NullReferenceException(nameof(orderBookPublisher));
-            
+
             _tickPricePublisher = tickPricePublisher ?? throw new NullReferenceException(nameof(tickPricePublisher));
 
             _reconnectIfNeededInterval = settings.ReconnectIfNeededInterval;
@@ -180,7 +180,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             _log.Trace("Latency timestamp: '{timestamp}-{assetPair}' - B2C2 connector received.", new DateTimeOffset(message.Timestamp).ToUnixTimeMilliseconds().ToString(), assetPair);
 
             var orderBook = Convert(message);
-            
+
             if (_orderBooksCache.TryGetValue(instrument, out var existedOrderBook))
             {
                 if (orderBook.Timestamp > existedOrderBook.Timestamp)
@@ -280,7 +280,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             lock (_syncReconnect)
             {
                 NotifyAboutDisconnect();
-                
+
                 _log.Info("Disposing WebSocketClient.");
                 _b2C2WebSocketClient?.Dispose();
                 _b2C2WebSocketClient = new B2С2WebSocketClient(_webSocketC2ClientSettings, _logFactory);
@@ -312,7 +312,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             _log.Warning("Reconnect detected. Sending empty order book to 0mq.");
             _zeroMqOrderBookPublisher.PublishAsync(emptyOrderBook, "/");
         }
-        
+
         private async Task PublishOrderBookAndTickPrice(OrderBook orderBook, string rawAssetPair)
         {
             if (IsStale(orderBook))
@@ -328,7 +328,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             await _orderBookPublisher.PublishAsync(orderBook);
             await _zeroMqOrderBookPublisher.PublishAsync(orderBook, rawAssetPair);
 
-            _log.Trace("Latency timestamp: '{timestamp}-{assetPair}' - published from B2C2 connector.", new DateTimeOffset(orderBook.Timestamp).ToUnixTimeMilliseconds().ToString(), orderBook.Asset);
+            _log.Info($"Latency timestamp: '{new DateTimeOffset(orderBook.Timestamp).ToUnixTimeMilliseconds().ToString()}-{orderBook.Asset}'");
 
             InternalMetrics.OrderBookOutCount
                 .WithLabels(orderBook.Asset)
