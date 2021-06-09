@@ -68,7 +68,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
                     var data = await _b2C2RestClient.GetTradeHistoryAsync(tradeRequest);
 
-                    _log.Info($"Current cursor = null; get data after tradeId = {(tradeId ?? "null")}; load more {data.Data.Count}");
+                    _log.Debug($"Current cursor = null; get data after tradeId = {(tradeId ?? "null")}; load more {data.Data.Count}");
 
                     int totalCount = 0;
                     bool finish = false;
@@ -101,7 +101,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
                         if (finish)
                         {
-                            _log.Info($"Finish loading to tradeId = {tradeId}. Loaded {totalCount} records");
+                            _log.Debug($"Finish loading to tradeId = {tradeId}. Loaded {totalCount} records");
                             break;
                         }
 
@@ -113,7 +113,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                             finish = true;
                         }
 
-                        _log.Info($"Current cursor = {tradeRequest.Cursor}; next cursor: {tradeRequest.Cursor}; load more {data.Data.Count}");
+                        _log.Debug($"Current cursor = {tradeRequest.Cursor}; next cursor: {tradeRequest.Cursor}; load more {data.Data.Count}");
                     }
 
                     return totalCount;

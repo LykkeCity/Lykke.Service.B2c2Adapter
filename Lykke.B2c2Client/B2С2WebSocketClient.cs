@@ -73,7 +73,7 @@ namespace Lykke.B2c2Client
 
             var tag = Guid.NewGuid().ToString();
 
-            _log.Info($"Subscribing to '{instrument}'.", tag);
+            _log.Debug(message: $"Subscribing to '{instrument}'.", tag);
 
             var subscribeRequest = new SubscribeRequest { Instrument = instrument, Levels = levels, Tag = tag };
             SendMessageToWebSocket(subscribeRequest, ct).GetAwaiter().GetResult();
@@ -101,7 +101,7 @@ namespace Lykke.B2c2Client
 
             var tag = Guid.NewGuid().ToString();
 
-            _log.Info($"Attempt to subscribe to order book updates, instrument: '{instrument}'.", tag);
+            _log.Debug(message: $"Attempt to subscribe to order book updates, instrument: '{instrument}'.", tag);
 
             ThrowIfUnsubscriptionAlreadyExists(instrument);
 
@@ -127,13 +127,13 @@ namespace Lykke.B2c2Client
 
         private void Connect(CancellationToken ct = default(CancellationToken))
         {
-            _log.Info("Attempt to connect and start handle messages cycle...");
+            _log.Debug("Attempt to connect and start handle messages cycle...");
 
             _clientWebSocket.Options.SetRequestHeader("Authorization", $"Token {_authorizationToken}");
 
             var connected = TryConnect(ct).GetAwaiter().GetResult();
 
-            _log.Info($"Connected? {connected}.");
+            _log.Debug($"Connected? {connected}.");
 
             if (!connected)
                 return;
@@ -156,7 +156,7 @@ namespace Lykke.B2c2Client
 
         private async Task<bool> TryConnect(CancellationToken ct)
         {
-            _log.Info("Try to connect...");
+            _log.Debug("Try to connect...");
 
             try
             {
@@ -269,7 +269,7 @@ namespace Lykke.B2c2Client
 
                 subscription?.TaskCompletionSource.TrySetException(new B2c2WebSocketException($"{nameof(SubscribeMessage)}.{nameof(SubscribeMessage.Success)} == false. {jToken}", errorResponse));
 
-                _log.Info($"Failed to subscribe to {instrument}.");
+                _log.Debug($"Failed to subscribe to {instrument}.");
 
                 return;
             }
@@ -290,7 +290,7 @@ namespace Lykke.B2c2Client
 
                 subscription.TaskCompletionSource.TrySetResult(0);
 
-                _log.Info($"Subscribed to {instrument}.");
+                _log.Debug($"Subscribed to {instrument}.");
             }
         }
 
@@ -302,7 +302,7 @@ namespace Lykke.B2c2Client
 
                 var message = $"{nameof(PriceMessage)}.{nameof(PriceMessage.Success)} == false.";
                 if (errorResponse.Code == ErrorCode.NotAbleToQuoteAtTheMoment)
-                    _log.Info(message, jToken);
+                    _log.Debug(message, jToken);
                 else
                     _log.Warning(message, context: jToken);
 
@@ -315,7 +315,7 @@ namespace Lykke.B2c2Client
 
             if (!_instrumentsHandlers.ContainsKey(result.Instrument))
             {
-                _log.Info("Received a price that we were not subscribed to.", new { result.Instrument });
+                _log.Debug("Received a price that we were not subscribed to.", new { result.Instrument });
 
                 return;
             }
@@ -369,7 +369,7 @@ namespace Lykke.B2c2Client
 
                 subscription.TaskCompletionSource.TrySetResult(0);
 
-                _log.Info($"Unsubscribed from {instrument}.");
+                _log.Debug($"Unsubscribed from {instrument}.");
             }
         }
 
@@ -424,7 +424,7 @@ namespace Lykke.B2c2Client
         {
             var needToConnect = _clientWebSocket.State == WebSocketState.None;
 
-            _log.Info($"WebSocket connection status: {_clientWebSocket.State}.");
+            _log.Debug($"WebSocket connection status: {_clientWebSocket.State}.");
 
             if (needToConnect)
                 Connect(ct);

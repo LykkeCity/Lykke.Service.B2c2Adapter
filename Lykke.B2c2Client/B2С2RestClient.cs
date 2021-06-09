@@ -43,7 +43,7 @@ namespace Lykke.B2c2Client
         {
             var requestId = Guid.NewGuid();
 
-            _log.Info("balance - request", requestId);
+            _log.Debug("balance - request", requestId);
 
             var responseStr = string.Empty;
 
@@ -55,7 +55,7 @@ namespace Lykke.B2c2Client
 
                     responseStr = await response.Content.ReadAsStringAsync();
 
-                    _log.Info("balance - response", new { RequestId = requestId, Response = responseStr });
+                    _log.Debug("balance - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
 
@@ -76,7 +76,7 @@ namespace Lykke.B2c2Client
         {
             var requestId = Guid.NewGuid();
 
-            _log.Info("instruments - request", requestId);
+            _log.Debug("instruments - request", requestId);
 
             var responseStr = string.Empty;
 
@@ -88,7 +88,7 @@ namespace Lykke.B2c2Client
 
                     responseStr = await response.Content.ReadAsStringAsync();
 
-                    _log.Info("instruments - response", new { RequestId = requestId, Response = responseStr });
+                    _log.Debug("instruments - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
 
@@ -111,7 +111,7 @@ namespace Lykke.B2c2Client
 
             var requestId = Guid.NewGuid();
 
-            _log.Info("request for quote - request", requestForQuoteRequest);
+            _log.Debug("request for quote - request", requestForQuoteRequest);
 
             var responseStr = string.Empty;
 
@@ -123,7 +123,7 @@ namespace Lykke.B2c2Client
 
                     responseStr = await response.Content.ReadAsStringAsync();
 
-                    _log.Info("request for quote - response", new { RequestId = requestId, Response = responseStr });
+                    _log.Debug("request for quote - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
 
@@ -150,7 +150,7 @@ namespace Lykke.B2c2Client
 
             var requestId = Guid.NewGuid();
 
-            _log.Info("order - request", orderRequest);
+            _log.Debug("order - request", orderRequest);
 
             var responseStr = string.Empty;
 
@@ -162,7 +162,7 @@ namespace Lykke.B2c2Client
 
                     responseStr = await response.Content.ReadAsStringAsync();
 
-                    _log.Info("order - response", new { RequestId = requestId, Response = responseStr });
+                    _log.Debug("order - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
 
@@ -189,7 +189,7 @@ namespace Lykke.B2c2Client
 
             var requestId = Guid.NewGuid();
 
-            _log.Info("trade - request", tradeRequest);
+            _log.Debug("trade - request", tradeRequest);
 
             var responseStr = string.Empty;
 
@@ -201,7 +201,7 @@ namespace Lykke.B2c2Client
 
                     responseStr = await response.Content.ReadAsStringAsync();
 
-                    _log.Info("trade - response", new { RequestId = requestId, Response = responseStr });
+                    _log.Debug("trade - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
 
@@ -222,7 +222,7 @@ namespace Lykke.B2c2Client
         {
             var requestId = Guid.NewGuid();
 
-            _log.Info("trade history - request", requestId);
+            _log.Debug("trade history - request", requestId);
 
             var responseStr = string.Empty;
 
@@ -234,7 +234,7 @@ namespace Lykke.B2c2Client
 
                     responseStr = await response.Content.ReadAsStringAsync();
 
-                    _log.Info("trade history - response", new { RequestId = requestId, Response = responseStr });
+                    _log.Debug("trade history - response", new { RequestId = requestId, Response = responseStr });
 
                     CheckForError(responseStr, status, requestId);
 
@@ -257,7 +257,7 @@ namespace Lykke.B2c2Client
         public async Task<List<LedgerLog>> GetLedgerHistoryAsync(int offset = 0, int limit = 50, CancellationToken ct = default(CancellationToken))
         {
             var requestId = Guid.NewGuid();
-            _log.Info("ledger history - request", requestId);
+            _log.Debug("ledger history - request", requestId);
 
             try
             {
@@ -266,7 +266,7 @@ namespace Lykke.B2c2Client
                     var status = response.StatusCode;
 
                     var responseStr = await response.Content.ReadAsStringAsync();
-                    _log.Info("ledger history - response", requestId);
+                    _log.Debug("ledger history - response", requestId);
 
                     CheckForError(responseStr, status, requestId);
 
@@ -277,7 +277,7 @@ namespace Lykke.B2c2Client
             }
             catch (Exception e)
             {
-                _log.Info($"ledger history - response exception: {e}", requestId);
+                _log.Error(e, "ledger history - response exception");
                 throw;
             }
         }
@@ -285,7 +285,7 @@ namespace Lykke.B2c2Client
         public async Task<PaginationResponse<List<LedgerLog>>> GetLedgerHistoryAsync(LedgersRequest request, CancellationToken ct = default(CancellationToken))
         {
             var requestId = Guid.NewGuid();
-            _log.Info("ledger history - request", context: $"requestId: {requestId}, request: {request?.ToJson()}");
+            _log.Debug("ledger history - request", context: $"requestId: {requestId}, request: {request?.ToJson()}");
 
             try
             {
@@ -349,7 +349,7 @@ namespace Lykke.B2c2Client
             }
             catch (Exception e)
             {
-                _log.Info($"ledger history - response exception: {e}", requestId);
+                _log.Error(e, "ledger history - response exception", requestId);
                 throw;
             }
         }
@@ -358,7 +358,7 @@ namespace Lykke.B2c2Client
         {
             var requestId = Guid.NewGuid();
 
-            _log.Info("trade history - request", context: $"requestId: {requestId}, request: {request?.ToJson()}");
+            _log.Debug("trade history - request", context: $"requestId: {requestId}, request: {request?.ToJson()}");
 
             var responseStr = string.Empty;
 
@@ -404,7 +404,7 @@ namespace Lykke.B2c2Client
 
                 responseStr = await response.Content.ReadAsStringAsync();
 
-                _log.Info("trade history - response", new { RequestId = requestId, Response = responseStr });
+                _log.Debug("trade history - response", new { RequestId = requestId, Response = responseStr });
 
                 CheckForError(responseStr, status, requestId);
 
