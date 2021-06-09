@@ -31,7 +31,7 @@ namespace Lykke.Service.B2c2Adapter.RabbitMq.Publishers
         {
             // NOTE: Read https://github.com/LykkeCity/Lykke.RabbitMqDotNetBroker/blob/master/README.md to learn
             // about RabbitMq subscriber configuration
-            
+
             if (!_publishingSettings.Enabled)
                 return;
 
@@ -69,7 +69,7 @@ namespace Lykke.Service.B2c2Adapter.RabbitMq.Publishers
                 var logMessage = $"OrderBookPublisher.PublishAsync() exception: ${e}.";
 
                 if (e.Message.Contains("isn't started yet"))
-                    _log.Info(logMessage);
+                    _log.Debug(logMessage);
                 else
                     _log.Warning(logMessage);
             }

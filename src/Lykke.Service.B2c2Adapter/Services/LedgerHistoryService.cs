@@ -67,7 +67,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                     }
 
                     var data = await _b2C2RestClient.GetLedgerHistoryAsync(ledgerRequest);
-                    _log.Info($"Current cursor = null; get data after transactionId = {(transactionId ?? "null")}; load more {data.Data.Count}");
+                    _log.Debug($"Current cursor = null; get data after transactionId = {(transactionId ?? "null")}; load more {data.Data.Count}");
 
                     int totalCount = 0;
                     bool finish = false;
@@ -100,7 +100,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
                         if (finish)
                         {
-                            _log.Info($"Finish loading to transactionId = {transactionId}. Loaded {totalCount} records");
+                            _log.Debug($"Finish loading to transactionId = {transactionId}. Loaded {totalCount} records");
                             break;
                         }
 
@@ -112,7 +112,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                             finish = true;
                         }
 
-                        _log.Info($"Current cursor = {ledgerRequest.Cursor}; next cursor: {ledgerRequest.Cursor}; load more {data.Data.Count}");
+                        _log.Debug($"Current cursor = {ledgerRequest.Cursor}; next cursor: {ledgerRequest.Cursor}; load more {data.Data.Count}");
                     }
 
                     return totalCount;
@@ -144,7 +144,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                 {
                     if (ex.ToString().Contains("Request was throttled"))
                     {
-                        _log.Info($"Request was throttled, wait 60 second");
+                        _log.Debug($"Request was throttled, wait 60 second");
                         await Task.Delay(60000);
                     }
                     else throw;
