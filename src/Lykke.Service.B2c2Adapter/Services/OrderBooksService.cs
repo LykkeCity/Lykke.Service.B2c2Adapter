@@ -177,7 +177,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                     .Set((DateTime.UtcNow - message.Timestamp).TotalMilliseconds);
             }
 
-            _log.Trace("Latency timestamp: '{timestamp}-{assetPair}' - B2C2 connector received.", new DateTimeOffset(message.Timestamp).ToUnixTimeMilliseconds().ToString(), assetPair);
+            _log.Info($"Latency timestamp: '{new DateTimeOffset(message.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPair}' - B2C2 connector received.");
 
             var orderBook = Convert(message);
 
@@ -313,7 +313,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             _zeroMqOrderBookPublisher.PublishAsync(emptyOrderBook, "/");
         }
 
-        private async Task PublishOrderBookAndTickPrice(OrderBook orderBook, string rawAssetPair)
+        private async Task PublishOrderBookAndTickPrice(OrderBook orderBook, string assetPairWithSlash)
         {
             if (IsStale(orderBook))
             {
@@ -326,9 +326,9 @@ namespace Lykke.Service.B2c2Adapter.Services
                 orderBook.Asset = orderBook.Asset.Replace(assetMapping.Key, assetMapping.Value);
 
             await _orderBookPublisher.PublishAsync(orderBook);
-            await _zeroMqOrderBookPublisher.PublishAsync(orderBook, rawAssetPair);
+            await _zeroMqOrderBookPublisher.PublishAsync(orderBook, assetPairWithSlash);
 
-            _log.Info($"Latency timestamp: '{new DateTimeOffset(orderBook.Timestamp).ToUnixTimeMilliseconds().ToString()}-{orderBook.Asset}'");
+            _log.Info($"Latency timestamp: '{new DateTimeOffset(orderBook.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPairWithSlash}' - B2C2 connector published.");
 
             InternalMetrics.OrderBookOutCount
                 .WithLabels(orderBook.Asset)
