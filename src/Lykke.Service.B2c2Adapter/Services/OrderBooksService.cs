@@ -177,7 +177,10 @@ namespace Lykke.Service.B2c2Adapter.Services
                     .Set((DateTime.UtcNow - message.Timestamp).TotalMilliseconds);
             }
 
-            _log.Info($"Latency timestamp: '{new DateTimeOffset(message.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPair}' - B2C2 connector received.");
+            if (assetPair == "BTC/USD")
+            {
+                _log.Info($"Latency timestamp: '{new DateTimeOffset(message.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPair}' - B2C2 connector received.");
+            }
 
             var orderBook = Convert(message);
 
@@ -328,7 +331,10 @@ namespace Lykke.Service.B2c2Adapter.Services
             await _orderBookPublisher.PublishAsync(orderBook);
             await _zeroMqOrderBookPublisher.PublishAsync(orderBook, assetPairWithSlash);
 
-            _log.Info($"Latency timestamp: '{new DateTimeOffset(orderBook.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPairWithSlash}' - B2C2 connector published.");
+            if (assetPairWithSlash == "BTC/USD")
+            {
+                _log.Info($"Latency timestamp: '{new DateTimeOffset(orderBook.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPairWithSlash}' - B2C2 connector published.");
+            }
 
             InternalMetrics.OrderBookOutCount
                 .WithLabels(orderBook.Asset)
