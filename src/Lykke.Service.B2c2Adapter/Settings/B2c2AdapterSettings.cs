@@ -34,6 +34,6 @@ namespace Lykke.Service.B2c2Adapter.Settings
 
         public ZeroMqPublishingSettings ZeroMq { get; set; }
 
-        public IReadOnlyList<string> InstrumentsToLogLatency { get; set; } = new List<string>();
+        public IReadOnlyList<string> InstrumentsToLogLatency { get; set; }
     }
 }
