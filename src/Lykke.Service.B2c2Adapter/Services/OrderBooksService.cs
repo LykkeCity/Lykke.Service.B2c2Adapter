@@ -43,7 +43,7 @@ namespace Lykke.Service.B2c2Adapter.Services
         private readonly B2c2AdapterSettings _settings;
         private readonly OrderBooksServiceSettings _orderBooksServiceSettings;
         private readonly IReadOnlyDictionary<string, string> _assetMappings;
-        private readonly IReadOnlyList<string> _instrumentsToLog;
+        private readonly IReadOnlyList<string> _instrumentsToLogLatency;
         private readonly IOrderBookPublisher _orderBookPublisher;
         private readonly ZeroMqOrderBookPublisher _zeroMqOrderBookPublisher;
 
@@ -55,7 +55,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             B2c2AdapterSettings settings,
             B2C2ClientSettings webSocketC2ClientSettings,
             IReadOnlyDictionary<string, string> assetMappings,
-            IReadOnlyList<string> instrumentsToLog,
+            IReadOnlyList<string> instrumentsToLogLatency,
             ILogFactory logFactory)
         {
             _withWithoutSuffixMapping = new ConcurrentDictionary<string, string>();
@@ -90,7 +90,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             _forceReconnectTrigger = new TimerTrigger(nameof(OrderBooksService), settings.ForceReconnectInterval, logFactory, ForceReconnect);
 
             _assetMappings = assetMappings;
-            _instrumentsToLog = instrumentsToLog;
+            _instrumentsToLogLatency = instrumentsToLogLatency;
 
             _logFactory = logFactory;
             _log = logFactory.CreateLog(this);
@@ -180,7 +180,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                     .Set((DateTime.UtcNow - message.Timestamp).TotalMilliseconds);
             }
 
-            if (_instrumentsToLog.Contains(assetPair))
+            if (_instrumentsToLogLatency.Contains(assetPair))
             {
                 _log.Info($"Latency timestamp: '{new DateTimeOffset(message.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPair}' - B2C2 connector received.");
             }
@@ -334,7 +334,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             await _orderBookPublisher.PublishAsync(orderBook);
             await _zeroMqOrderBookPublisher.PublishAsync(orderBook, assetPairWithSlash);
 
-            if (_instrumentsToLog.Contains(assetPairWithSlash))
+            if (_instrumentsToLogLatency.Contains(assetPairWithSlash))
             {
                 _log.Info($"Latency timestamp: '{new DateTimeOffset(orderBook.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPairWithSlash}' - B2C2 connector published.");
             }
