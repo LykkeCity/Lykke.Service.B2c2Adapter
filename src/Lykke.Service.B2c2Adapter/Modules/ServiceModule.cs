@@ -1,4 +1,5 @@
-﻿using Antares.Sdk.Services;
+﻿using System;
+using Antares.Sdk.Services;
 using Autofac;
 using Autofac.Core.NonPublicProperty;
 using JetBrains.Annotations;
@@ -68,7 +69,7 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.AssetMappings))
                 .WithParameter(TypedParameter.From(_settings))
-                .WithParameter(TypedParameter.From(_settings.InstrumentsToLogLatency))
+                .WithParameter(TypedParameter.From(_settings.InstrumentsToLogLatency ?? Array.Empty<string>()))
                 .WithParameter(TypedParameter.From(webSocketSettings));
 
             // Reports
