@@ -68,7 +68,7 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.AssetMappings))
                 .WithParameter(TypedParameter.From(_settings))
-                .WithParameter(TypedParameter.From(_settings.InstrumentsToLog))
+                .WithParameter(TypedParameter.From(_settings.InstrumentsToLogLatency))
                 .WithParameter(TypedParameter.From(webSocketSettings));
 
             // Reports
