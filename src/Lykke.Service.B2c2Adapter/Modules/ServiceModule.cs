@@ -52,11 +52,11 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.VenueName))
                 .WithParameter(TypedParameter.From(_settings.ZeroMq));
-        
+
             builder.RegisterType<ZeroMqOrderPublisherDispatcher>()
                 .As<IHostedService>()
-                .SingleInstance();    
-            
+                .SingleInstance();
+
             builder.RegisterType<TickPricePublisher>()
                 .AsSelf()
                 .As<ITickPricePublisher>()
@@ -68,6 +68,7 @@ namespace Lykke.Service.B2c2Adapter.Modules
                 .SingleInstance()
                 .WithParameter(TypedParameter.From(_settings.AssetMappings))
                 .WithParameter(TypedParameter.From(_settings))
+                .WithParameter(TypedParameter.From(_settings.InstrumentsToLogLatency))
                 .WithParameter(TypedParameter.From(webSocketSettings));
 
             // Reports

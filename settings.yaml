@@ -28,6 +28,11 @@ B2c2AdapterService:
         types:
             - JsonArray
 
+    InstrumentsToLogLatency:
+        settings-key: B2C2AdapterService-InstrumentsToLogLatency
+        types:
+            - JsonArray
+
     ReconnectIfNeededInterval:
         settings-key: B2C2AdapterService-ReconnectIfNeededInterval
 
