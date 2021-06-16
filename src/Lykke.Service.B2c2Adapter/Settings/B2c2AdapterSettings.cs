@@ -31,7 +31,9 @@ namespace Lykke.Service.B2c2Adapter.Settings
         public string VenueName { get; set; }
 
         public IReadOnlyDictionary<string, string> InstrumentMappings { get; set; }
-        
+
         public ZeroMqPublishingSettings ZeroMq { get; set; }
+
+        public IReadOnlyList<string> InstrumentsToLog { get; set; } = new List<string>();
     }
 }
