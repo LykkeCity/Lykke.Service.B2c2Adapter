@@ -182,7 +182,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             if (_instrumentsToLogLatency.Contains(assetPair))
             {
-                _log.Info($"Latency timestamp: '{new DateTimeOffset(message.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPair}' - B2C2 connector received.");
+                _log.Info($"Latency timestamp: {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds().ToString()}, '{new DateTimeOffset(message.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPair}' - B2C2 connector received.");
             }
 
             var orderBook = Convert(message);
@@ -336,7 +336,7 @@ namespace Lykke.Service.B2c2Adapter.Services
 
             if (_instrumentsToLogLatency.Contains(assetPairWithSlash))
             {
-                _log.Info($"Latency timestamp: '{new DateTimeOffset(orderBook.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPairWithSlash}' - B2C2 connector published.");
+                _log.Info($"Latency timestamp: {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds().ToString()}, '{new DateTimeOffset(orderBook.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPairWithSlash}' - B2C2 connector published.");
             }
 
             InternalMetrics.OrderBookOutCount
