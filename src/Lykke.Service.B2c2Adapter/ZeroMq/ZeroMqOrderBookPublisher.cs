@@ -42,11 +42,16 @@ namespace Lykke.Service.B2c2Adapter.ZeroMq
             _publisher = new ZeroMqPublisher(logFactory, orderBookPublishingSettings.PublishingUrl);
         }
         
-        public Task PublishAsync(Common.ExchangeAdapter.Contracts.OrderBook orderBook, string rawAssetPair)
+        public Task PublishAsync(Common.ExchangeAdapter.Contracts.OrderBook orderBook, string assetPairWithSlash)
         {
+            if (!assetPairWithSlash.Contains("/"))
+            {
+                _logger.Warning($"Asset pair doesn't contain '/': {assetPairWithSlash}.");
+            }
+
             var key = GetKey(orderBook.Source, orderBook.Asset);
 
-            _latestOrderBooks[key] = Map(orderBook, rawAssetPair);
+            _latestOrderBooks[key] = Map(orderBook, assetPairWithSlash);
             InternalMetrics.OrderBookOutDictionarySize.Set(_latestOrderBooks.Count);
    
             _event.Set();
@@ -54,9 +59,9 @@ namespace Lykke.Service.B2c2Adapter.ZeroMq
             return Task.CompletedTask;
         }
 
-        private OrderBook Map(Common.ExchangeAdapter.Contracts.OrderBook orderBook, string rawAssetPair)
+        private OrderBook Map(Common.ExchangeAdapter.Contracts.OrderBook orderBook, string assetPairWithSlash)
         {
-            var orderBookAsset = rawAssetPair.Split("/");
+            var orderBookAsset = assetPairWithSlash.Split("/");
             
             var mapped = new OrderBook
             {

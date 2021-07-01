@@ -145,7 +145,7 @@ namespace Lykke.Service.B2c2Adapter.Services
                 }
                 catch (Exception exception)
                 {
-                    _log.Error(exception, "Exception occured while getting instruments via REST.");
+                    _log.Error(exception, "Exception occurred while getting instruments via REST.");
                 }
             }
 
