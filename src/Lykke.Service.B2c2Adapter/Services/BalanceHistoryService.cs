@@ -38,7 +38,7 @@ namespace Lykke.Service.B2c2Adapter.Services
             _logFactory = logFactory;
             _log = logFactory.CreateLog(this);
         }
-        
+
         private ReportContext CreateContext()
         {
             return new ReportContext(_sqlConnString);
@@ -58,8 +58,10 @@ namespace Lykke.Service.B2c2Adapter.Services
                 {
                     var assetName = assetBalance.Key;
 
-                    foreach (var assetMapping in _assetMappings)
-                        assetName = assetName.Replace(assetMapping.Key, assetMapping.Value);
+                    if (_assetMappings.ContainsKey(assetName))
+                    {
+                        assetName = _assetMappings[assetName];
+                    }
 
                     var item = new BalanceEntity
                     {

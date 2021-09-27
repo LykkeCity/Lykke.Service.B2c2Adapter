@@ -79,8 +79,10 @@ namespace Lykke.Service.B2c2Adapter.Services
 
                         foreach (var item in data.Data)
                         {
-                            foreach (var assetMapping in _assetMappings)
-                                item.AssetPair = item.AssetPair.Replace(assetMapping.Key, assetMapping.Value);
+                            if (_assetMappings.ContainsKey(item.AssetPair))
+                            {
+                                item.AssetPair = _assetMappings[item.AssetPair];
+                            }
 
                             items.Add(new TradeEntity(item));
                         }
@@ -148,8 +150,10 @@ namespace Lykke.Service.B2c2Adapter.Services
                         added = 0;
                         foreach (var log in data.Data)
                         {
-                            foreach (var assetMapping in _assetMappings)
-                                log.AssetPair = log.AssetPair.Replace(assetMapping.Key, assetMapping.Value);
+                            if (_assetMappings.ContainsKey(log.AssetPair))
+                            {
+                                log.AssetPair = _assetMappings[log.AssetPair];
+                            }
 
                             var item = await context.Trades.FirstOrDefaultAsync(e => e.TradeId == log.TradeId, ct);
                             if (item != null)

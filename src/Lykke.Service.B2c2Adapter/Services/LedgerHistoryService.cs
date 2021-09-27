@@ -78,8 +78,10 @@ namespace Lykke.Service.B2c2Adapter.Services
 
                         foreach (var item in data.Data)
                         {
-                            foreach (var assetMapping in _assetMappings)
-                                item.Currency = item.Currency.Replace(assetMapping.Key, assetMapping.Value);
+                            if (_assetMappings.ContainsKey(item.Currency))
+                            {
+                                item.Currency = _assetMappings[item.Currency];
+                            }
 
                             items.Add(new LedgerEntity(item));
                         }
@@ -134,8 +136,10 @@ namespace Lykke.Service.B2c2Adapter.Services
 
                     foreach (var item in data.Data)
                     {
-                        foreach (var assetMapping in _assetMappings)
-                            item.Currency = item.Currency.Replace(assetMapping.Key, assetMapping.Value);
+                        if (_assetMappings.ContainsKey(item.Currency))
+                        {
+                            item.Currency = _assetMappings[item.Currency];
+                        }
                     }
 
                     return data;
@@ -175,8 +179,10 @@ namespace Lykke.Service.B2c2Adapter.Services
                         added = 0;
                         foreach (var log in data.Data)
                         {
-                            foreach (var assetMapping in _assetMappings)
-                                log.Currency = log.Currency.Replace(assetMapping.Key, assetMapping.Value);
+                            if (_assetMappings.ContainsKey(log.Currency))
+                            {
+                                log.Currency = _assetMappings[log.Currency];
+                            }
 
                             var item = await context.Ledgers.FirstOrDefaultAsync(
                                 e => e.TransactionId == log.TransactionId, ct);

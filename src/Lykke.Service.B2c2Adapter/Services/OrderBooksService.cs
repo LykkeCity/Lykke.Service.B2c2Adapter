@@ -328,8 +328,10 @@ namespace Lykke.Service.B2c2Adapter.Services
                 return;
             }
 
-            foreach (var assetMapping in _assetMappings)
-                orderBook.Asset = orderBook.Asset.Replace(assetMapping.Key, assetMapping.Value);
+            if (_assetMappings.ContainsKey(orderBook.Asset))
+            {
+                orderBook.Asset = _assetMappings[orderBook.Asset];
+            }
 
             await _orderBookPublisher.PublishAsync(orderBook);
             await _zeroMqOrderBookPublisher.PublishAsync(orderBook, assetPairWithSlash);
