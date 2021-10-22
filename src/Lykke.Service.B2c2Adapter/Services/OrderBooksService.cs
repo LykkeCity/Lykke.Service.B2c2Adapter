@@ -185,6 +185,11 @@ namespace Lykke.Service.B2c2Adapter.Services
                 _log.Info($"Latency timestamp: {new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds().ToString()}, '{new DateTimeOffset(message.Timestamp).ToUnixTimeMilliseconds().ToString()}-{assetPair}' - B2C2 connector received.");
             }
 
+            if (message.Instrument.Contains("LTC", StringComparison.InvariantCultureIgnoreCase))
+            {
+                _log.Info($"Price instrument: {message.Instrument}, instrument: {instrument}, asset pair: {assetPair}.");
+            }
+
             var orderBook = Convert(message);
 
             if (_orderBooksCache.TryGetValue(instrument, out var existedOrderBook))
@@ -329,7 +334,17 @@ namespace Lykke.Service.B2c2Adapter.Services
             }
 
             foreach (var assetMapping in _assetMappings)
-                orderBook.Asset = orderBook.Asset.Replace(assetMapping.Key, assetMapping.Value);
+            {
+                string asset = orderBook.Asset;
+                string replaced = orderBook.Asset.Replace(assetMapping.Key, assetMapping.Value);
+
+                if (orderBook.Asset.Contains("LTC", StringComparison.InvariantCultureIgnoreCase) && asset != replaced)
+                {
+                    _log.Info($"Updated order book asset: {asset} -> {replaced}");
+                }
+
+                orderBook.Asset = replaced;
+            }
 
             await _orderBookPublisher.PublishAsync(orderBook);
             await _zeroMqOrderBookPublisher.PublishAsync(orderBook, assetPairWithSlash);
